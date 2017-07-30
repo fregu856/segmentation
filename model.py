@@ -118,7 +118,7 @@ class ENet_model(object):
         input_shape = x.get_shape().as_list()
         input_depth = input_shape[3]
 
-        internal_depth = int(input_depth/proj_ratio)
+        internal_depth = int(output_depth/proj_ratio)
 
         # convolution branch:
         conv_branch = x
@@ -198,7 +198,7 @@ class ENet_model(object):
         input_shape = x.get_shape().as_list()
         input_depth = input_shape[3]
 
-        internal_depth = int(input_depth/proj_ratio)
+        internal_depth = int(output_depth/proj_ratio)
 
         # convolution branch:
         conv_branch = x
@@ -252,7 +252,7 @@ class ENet_model(object):
         input_shape = x.get_shape().as_list()
         input_depth = input_shape[3]
 
-        internal_depth = int(input_depth/proj_ratio)
+        internal_depth = int(output_depth/proj_ratio)
 
         # convolution branch:
         conv_branch = x
@@ -315,39 +315,62 @@ class ENet_model(object):
         input_shape = x.get_shape().as_list()
         input_depth = input_shape[3]
 
-        internal_depth = int(input_depth/proj_ratio)
+        internal_depth = int(output_depth/proj_ratio)
+
+        # main branch:
+        main_branch = x
+
+        if upsampling:
+            # # 1x1 projection (to decrease depth to the same value as before downsampling):
+            W_upsample = tf.get_variable(scope + "/W_upsample",
+                        shape=[1, 1, input_depth, output_depth], # ([filter_height, filter_width, in_depth, out_depth])
+                        initializer=tf.contrib.layers.xavier_initializer())
+            main_branch = tf.nn.conv2d(main_branch, W_upsample, strides=[1, 1, 1, 1],
+                        padding="VALID") # NOTE! no bias terms
+            # # # batch norm:
+            main_branch = tf.contrib.slim.batch_norm(main_branch, is_training=self.training_ph)
+            # NOTE! no ReLU here
+
+            # # max unpooling:
+            main_branch = unpool(main_branch, pooling_indices)
 
         # convolution branch:
         conv_branch = x
 
         # # 1x1 projection:
-        if upsampling:
-            W_conv = tf.get_variable(scope + "/W_proj",
-                        shape=[2, 2, input_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                        initializer=tf.contrib.layers.xavier_initializer())
-            conv_branch = tf.nn.conv2d(conv_branch, W_conv, strides=[1, 2, 2, 1],
-                        padding="VALID") # NOTE! no bias terms
-        else:
-            W_proj = tf.get_variable(scope + "/W_proj",
-                        shape=[1, 1, input_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                        initializer=tf.contrib.layers.xavier_initializer())
-            conv_branch = tf.nn.conv2d(conv_branch, W_proj, strides=[1, 1, 1, 1],
-                        padding="VALID") # NOTE! no bias terms
-        # # # batch norm and PReLU:
+        W_proj = tf.get_variable(scope + "/W_proj",
+                    shape=[1, 1, input_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
+                    initializer=tf.contrib.layers.xavier_initializer())
+        conv_branch = tf.nn.conv2d(conv_branch, W_proj, strides=[1, 1, 1, 1],
+                    padding="VALID") # NOTE! no bias terms
+        # # # batch norm and ReLU:
         conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
-        conv_branch = PReLU(conv_branch)
+        conv_branch = tf.nn.relu(conv_branch)
 
         # # conv:
-        W_conv = tf.get_variable(scope + "/W_conv",
-                    shape=[3, 3, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                    initializer=tf.contrib.layers.xavier_initializer())
-        b_conv = tf.get_variable(scope + "/b_conv", shape=[internal_depth] # ([out_depth]], one bias weight per out depth layer),
-                    initializer=tf.constant_initializer(0))
-        conv_branch = tf.nn.conv2d(conv_branch, W_conv, strides=[1, 1, 1, 1],
-                    padding="SAME") + b_conv
-        # # # batch norm and PReLU:
+        if upsampling:
+            # deconvolution:
+            W_conv = tf.get_variable(scope + "/W_conv",
+                        shape=[3, 3, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
+                        initializer=tf.contrib.layers.xavier_initializer())
+            b_conv = tf.get_variable(scope + "/b_conv", shape=[internal_depth] # ([out_depth]], one bias weight per out depth layer),
+                        initializer=tf.constant_initializer(0))
+            main_branch_shape = main_branch.get_shape().as_list()
+            output_shape = tf.convert_to_tensor([main_branch_shape[0],
+                        main_branch_shape[1], main_branch_shape[2], internal_depth])
+            conv_branch = tf.nn.conv2d_transpose(conv_branch, W_conv, output_shape=output_shape
+                        strides=[1, 2, 2, 1], padding="SAME") + b_conv
+        else:
+            W_conv = tf.get_variable(scope + "/W_conv",
+                        shape=[3, 3, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
+                        initializer=tf.contrib.layers.xavier_initializer())
+            b_conv = tf.get_variable(scope + "/b_conv", shape=[internal_depth] # ([out_depth]], one bias weight per out depth layer),
+                        initializer=tf.constant_initializer(0))
+            conv_branch = tf.nn.conv2d(conv_branch, W_conv, strides=[1, 1, 1, 1],
+                        padding="SAME") + b_conv
+        # # # batch norm and ReLU:
         conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
-        conv_branch = PReLU(conv_branch)
+        conv_branch = tf.nn.relu(conv_branch)
 
         # # 1x1 expansion:
         W_exp = tf.get_variable(scope + "/W_exp",
@@ -357,33 +380,13 @@ class ENet_model(object):
                     padding="VALID") # NOTE! no bias terms
         # # # batch norm:
         conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
-        # NOTE! no PReLU here
+        # NOTE! no ReLU here
 
-        # # regularizer:
-        conv_branch = spatial_dropout(conv_branch, drop_prob, training=self.training_ph)
-
-        # main branch:
-        main_branch = x
-
-        if upsampling:
-            # # max pooling with argmax (for use in upsampling in the decoder):
-            main_branch, pooling_indices = tf.nn.max_pool_with_argmax(main_branch,
-                        ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding="SAME")
-            # (everytime we downsample, we also increase the feature block depth)
-
-            # # pad with zeros so that the feature block depth matches:
-            depth_to_pad = output_depth - input_depth
-            paddings = tf.convert_to_tensor([[0, 0], [0, 0], [0, 0], [0, depth_to_pad]])
-            # (paddings is an integer tensor of shape [4, 2] where 4 is the rank
-            # of main_branch. For each dimension D (D = 0, 1, 2, 3) of main_branch,
-            # paddings[D, 0] is the no of values to add before the contents of main_branch
-            # in that dimension, and paddings[D, 0] is the no of values to add after
-            # the contents of main_branch in that dimension.)
-            main_branch = tf.pad(main_branch, paddings=paddings, mode="CONSTANT")
+        # NOTE! no regularizer
 
         # add the branches:
         merged = conv_branch + main_branch
-        # apply PReLU:
-        output = PReLU(merged)
+        # apply ReLU:
+        output = tf.nn.relu(merged)
 
         return output
