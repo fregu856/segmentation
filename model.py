@@ -47,6 +47,8 @@ class ENet_model(object):
         - DOES:
         """
 
+        # TODO!
+
         self.imgs_ph = 0
         self.labels_ph = 0
         self.keep_prob_ph = 0
@@ -95,6 +97,7 @@ class ENet_model(object):
 
     def initial_block(self, x):
         with tf.variable_scope("initial_block"):
+            # convolution branch:
             W_conv = tf.get_variable("W",
                         shape=[3, 3, 3, 13], # ([filter_height, filter_width, in_depth, out_depth])
                         initializer=tf.contrib.layers.xavier_initializer())
@@ -103,12 +106,15 @@ class ENet_model(object):
             conv_branch = tf.nn.conv2d(x, W_conv, strides=[1, 2, 2, 1],
                         padding="SAME") + b_conv
 
+            # max pooling branch:
             pool_branch = tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
                         strides=[1, 2, 2, 1], padding="VALID")
 
+            # concatenate the branches:
             concat = tf.concat([conv_branch, pool_branch], axis=3) # (3: the depth axis)
 
-            output = tf.contrib.slim.batch_norm(net_conv,
+            # apply batch normalization and PReLU:
+            output = tf.contrib.slim.batch_norm(concat,
                         is_training=self.training_ph)
             output = PReLU(output)
 
