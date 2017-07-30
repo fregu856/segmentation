@@ -1,6 +1,8 @@
 import numpy as np
 import tensorflow as tf
 
+from utilities import PReLU, spatial_dropout, unpool
+
 class ENet_model(object):
     """
     - DOES:
@@ -48,8 +50,9 @@ class ENet_model(object):
         self.imgs_ph = 0
         self.labels_ph = 0
         self.keep_prob_ph = 0
+        self.training_ph = 0
 
-    def create_feed_dict(self, imgs_batch, labels_batch=None, keep_prob=1):
+    def create_feed_dict(self, imgs_batch, labels_batch=None, keep_prob=1, training=True):
         """
         - DOES: returns a feed_dict mapping the placeholders to the actual
         input data (this is how we run the network on specific data).
@@ -58,6 +61,7 @@ class ENet_model(object):
         feed_dict = {}
         feed_dict[self.imgs_ph] = imgs_batch
         feed_dict[self.keep_prob_ph] = keep_prob
+        feed_dict[self.training_ph] = training
         if labels_batch is not None:
             # only add the labels data if it's specified (during inference, we
             # won't have any labels):
@@ -88,3 +92,60 @@ class ENet_model(object):
 
         optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
         self.train_op = optimizer.minimize(self.loss)
+
+
+
+    def initial_block(self, x):
+        with tf.variable_scope("initial_block"):
+            W_conv = tf.get_variable("W",
+                        shape=[3, 3, 3, 13], # ([filter_height, filter_width, in_depth, out_depth])
+                        initializer=tf.contrib.layers.xavier_initializer())
+            b_conv = tf.get_variable("b", shape=[13] # ([out_depth]], one bias weight per out depth layer),
+                        initializer=tf.constant_initializer(0))
+
+            conv_branch = tf.nn.conv2d(x, W_conv, strides=[1, 2, 2, 1],
+                        padding="SAME") + b_conv
+
+            pool_branch = tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
+                        strides=[1, 2, 2, 1], padding="VALID")
+
+            concat = tf.concat([conv_branch, pool_branch], axis=3) # (3: the depth axis)
+
+            output = tf.contrib.slim.batch_norm(net_conv,
+                        is_training=self.training_ph, fused=True)
+            output = PReLU(output)
+
+        return output
+
+    def bottleneck_regular(self, x, scope, proj_ratio=4, downsample=False):
+        input_shape = x.get_shape().as_list()
+        input_depth = input_shape[3]
+
+        internal_depth = int(input_depth/proj_ratio)
+
+        # 1x1 projection:
+        if not downsample:
+            W_conv = tf.get_variable(scope + "/W_proj",
+                        shape=[1, 1, input_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
+                        initializer=tf.contrib.layers.xavier_initializer())
+
+            # NOTE! No bias terms
+
+            conv_branch = tf.nn.conv2d(x, W_conv, strides=[1, 1, 1, 1],
+                        padding="VALID")
+        else:
+            W_conv = tf.get_variable(scope + "/W_proj",
+                        shape=[2, 2, input_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
+                        initializer=tf.contrib.layers.xavier_initializer())
+
+            # NOTE! No bias terms
+
+            conv_branch = tf.nn.conv2d(x, W_conv, strides=[1, 2, 2, 1],
+                        padding="VALID")
+
+
+    def bottleneck_dilated(self, x):
+        test =1
+
+    def bottleneck_asymmetric(self, x):
+        test =1
