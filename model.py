@@ -112,36 +112,66 @@ class ENet_model(object):
             concat = tf.concat([conv_branch, pool_branch], axis=3) # (3: the depth axis)
 
             output = tf.contrib.slim.batch_norm(net_conv,
-                        is_training=self.training_ph, fused=True)
+                        is_training=self.training_ph)
             output = PReLU(output)
 
         return output
 
-    def bottleneck_regular(self, x, scope, proj_ratio=4, downsample=False):
+    def bottleneck_regular(self, x, output_depth, drop_prob, scope, proj_ratio=4, downsample=False):
         input_shape = x.get_shape().as_list()
         input_depth = input_shape[3]
 
         internal_depth = int(input_depth/proj_ratio)
 
-        # 1x1 projection:
+        # convolution branch:
+        # # 1x1 projection:
         if not downsample:
-            W_conv = tf.get_variable(scope + "/W_proj",
+            W_proj = tf.get_variable(scope + "/W_proj",
                         shape=[1, 1, input_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
                         initializer=tf.contrib.layers.xavier_initializer())
-
-            # NOTE! No bias terms
-
-            conv_branch = tf.nn.conv2d(x, W_conv, strides=[1, 1, 1, 1],
-                        padding="VALID")
+            conv_branch = tf.nn.conv2d(x, W_proj, strides=[1, 1, 1, 1],
+                        padding="VALID") # NOTE! no bias terms
         else:
             W_conv = tf.get_variable(scope + "/W_proj",
                         shape=[2, 2, input_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
                         initializer=tf.contrib.layers.xavier_initializer())
-
-            # NOTE! No bias terms
-
             conv_branch = tf.nn.conv2d(x, W_conv, strides=[1, 2, 2, 1],
-                        padding="VALID")
+                        padding="VALID") # NOTE! no bias terms
+        # # # batch norm and PReLU:
+        conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
+        conv_branch = PReLU(conv_branch)
+
+        # # conv:
+        W_conv = tf.get_variable(scope + "/W_conv",
+                    shape=[3, 3, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
+                    initializer=tf.contrib.layers.xavier_initializer())
+        b_conv = tf.get_variable(scope + "/b_conv", shape=[internal_depth] # ([out_depth]], one bias weight per out depth layer),
+                    initializer=tf.constant_initializer(0))
+        conv_branch = tf.nn.conv2d(conv_branch, W_conv, strides=[1, 1, 1, 1],
+                    padding="SAME") + b_conv
+        # # # batch norm and PReLU:
+        conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
+        conv_branch = PReLU(conv_branch)
+
+        # # 1x1 expansion:
+        W_exp = tf.get_variable(scope + "/W_exp",
+                    shape=[1, 1, internal_depth, output_depth], # ([filter_height, filter_width, in_depth, out_depth])
+                    initializer=tf.contrib.layers.xavier_initializer())
+        conv_branch = tf.nn.conv2d(conv_branch, W_exp, strides=[1, 1, 1, 1],
+                    padding="VALID") # NOTE! no bias terms
+        # # # batch norm:
+        conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
+        # NOTE! no PReLU here
+
+        # # regularizer:
+        conv_branch = spatial_dropout(conv_branch, drop_prob, training=self.training_ph)
+
+
+        # main branch:
+
+
+
+
 
 
     def bottleneck_dilated(self, x):
