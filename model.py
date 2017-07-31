@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 
-from utilities import PReLU, spatial_dropout, unpool
+from utilities import PReLU, spatial_dropout, max_unpool
 
 class ENet_model(object):
     """
@@ -23,6 +23,8 @@ class ENet_model(object):
         self.initial_lr = 5e-4 # TODO!
         self.decay_steps =  1000 # TODO!
         self.lr_decay_rate = 1e-1 # TODO!
+        self.img_height = 512
+        self.img_width = 1024
 
         #
         self.create_model_dirs()
@@ -51,12 +53,13 @@ class ENet_model(object):
         - DOES:
         """
 
-        # TODO!
-
-        self.imgs_ph = 0
-        self.onehot_labels_ph = 0
-        self.keep_prob_ph = 0
-        self.training_ph = 0
+        self.imgs_ph = tf.placeholder(tf.int32,
+                    shape=[None, self.img_heigth, self.img_width, 3], # ([batch_size, img_heigth, img_width, 3])
+                    name="imgs_ph")
+        self.onehot_labels_ph = tf.placeholder(tf.uint8,
+                    shape=[None, self.img_heigth, self.img_width, self.no_of_classes], # ([batch_size, img_heigth, img_width, no_of_classes])
+                    name="onehot_labels_ph")
+        self.training_ph = tf.placeholder(tf.bool, name="training_ph")
 
     def create_feed_dict(self, imgs_batch, onehot_labels_batch=None, keep_prob=1, training=True):
         """
@@ -66,7 +69,6 @@ class ENet_model(object):
 
         feed_dict = {}
         feed_dict[self.imgs_ph] = imgs_batch
-        feed_dict[self.keep_prob_ph] = keep_prob
         feed_dict[self.training_ph] = training
         if onehot_labels_batch is not None:
             # only add the labels data if it's specified (during inference, we
@@ -416,7 +418,7 @@ class ENet_model(object):
             # NOTE! no ReLU here
 
             # # max unpooling:
-            main_branch = unpool(main_branch, pooling_indices)
+            main_branch = max_unpool(main_branch, pooling_indices)
 
         # convolution branch:
         conv_branch = x

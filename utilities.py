@@ -49,7 +49,7 @@ def spatial_dropout(x, drop_prob, training=True):
 
     return output
 
-def unpool(x, mask, kernel_shape=[1, 2, 2, 1]):
+def max_unpool(x, pooling_indices, kernel_shape=[1, 2, 2, 1]):
     """
     - DOES:
 
@@ -67,6 +67,20 @@ def unpool(x, mask, kernel_shape=[1, 2, 2, 1]):
     output_shape = (batch_size, fb_height*kernel_shape[1],
                 fb_width*kernel_shape[2], fb_depth)
 
-    # TODO!
+    ones_like_pooling_indices = tf.ones_like(pooling_indices, dtype=tf.int32)
+    batch_shape = tf.concat([[input_shape[0]], [1], [1], [1]], 0)
+    batch_range = tf.reshape(tf.range(output_shape[0], dtype=tf.int32), shape=batch_shape)
+    b = one_like_mask * batch_range
+    y = mask // (output_shape[2] * output_shape[3])
+    x = (mask // output_shape[3]) % output_shape[2] #mask % (output_shape[2] * output_shape[3]) // output_shape[3]
+    feature_range = tf.range(output_shape[3], dtype=tf.int32)
+    f = one_like_mask * feature_range
+
+    # transpose indices & reshape update values to one dimension
+    updates_size = tf.size(updates)
+    indices = tf.transpose(tf.reshape(tf.stack([b, y, x, f]), [4, updates_size]))
+    values = tf.reshape(updates, [updates_size])
+    ret = tf.scatter_nd(indices, values, output_shape)
+    return ret
 
     return 0
