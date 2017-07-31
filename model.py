@@ -18,6 +18,7 @@ class ENet_model(object):
         self.lr = 0.001
 
         self.logs_dir = "/home/fregu856/segmentation/training_logs"
+        self.no_of_classes = 16
 
         #
         self.create_model_dirs()
@@ -74,9 +75,76 @@ class ENet_model(object):
         - DOES:
         """
 
-        # TODO!
+        # encoder:
+        initial = self.initial_block(x=self.imgs_ph, scope="inital")
 
-        self.logits = 0
+        bottleneck_1_0, pooling_indices_1 = encoder_bottleneck_regular(x=initial,
+                    output_depth=64, drop_prob=0.01, scope="bottleneck_1_0", downsampling=True)
+        bottleneck_1_1 = encoder_bottleneck_regular(x=bottleneck_1_0,
+                    output_depth=64, drop_prob=0.01, scope="bottleneck_1_1")
+        bottleneck_1_2 = encoder_bottleneck_regular(x=bottleneck_1_1,
+                    output_depth=64, drop_prob=0.01, scope="bottleneck_1_2")
+        bottleneck_1_3 = encoder_bottleneck_regular(x=bottleneck_1_2,
+                    output_depth=64, drop_prob=0.01, scope="bottleneck_1_3")
+        bottleneck_1_4 = encoder_bottleneck_regular(x=bottleneck_1_3,
+                    output_depth=64, drop_prob=0.01, scope="bottleneck_1_4")
+
+        bottleneck_2_0, pooling_indices_2 = encoder_bottleneck_regular(x=bottleneck_1_4,
+                    output_depth=128, drop_prob=0.1, scope="bottleneck_2_0", downsampling=True)
+        bottleneck_2_1 = encoder_bottleneck_regular(x=bottleneck_2_0,
+                    output_depth=128, drop_prob=0.1, scope="bottleneck_2_1")
+        bottleneck_2_2 = encoder_bottleneck_dilated(x=bottleneck_2_1,
+                    output_depth=128, drop_prob=0.1, scope="bottleneck_2_2", dilation_rate=2)
+        bottleneck_2_3 = encoder_bottleneck_asymmetric(x=bottleneck_2_2,
+                    output_depth=128, drop_prob=0.1, scope="bottleneck_2_3")
+        bottleneck_2_4 = encoder_bottleneck_dilated(x=bottleneck_2_3,
+                    output_depth=128, drop_prob=0.1, scope="bottleneck_2_4", dilation_rate=4)
+        bottleneck_2_5 = encoder_bottleneck_regular(x=bottleneck_2_4,
+                    output_depth=128, drop_prob=0.1, scope="bottleneck_2_5")
+        bottleneck_2_6 = encoder_bottleneck_dilated(x=bottleneck_2_5,
+                    output_depth=128, drop_prob=0.1, scope="bottleneck_2_6", dilation_rate=8)
+        bottleneck_2_7 = encoder_bottleneck_asymmetric(x=bottleneck_2_6,
+                    output_depth=128, drop_prob=0.1, scope="bottleneck_2_7")
+        bottleneck_2_8 = encoder_bottleneck_dilated(x=bottleneck_2_7,
+                    output_depth=128, drop_prob=0.1, scope="bottleneck_2_8", dilation_rate=16)
+
+        bottleneck_3_1 = encoder_bottleneck_regular(x=bottleneck_2_8,
+                    output_depth=128, drop_prob=0.1, scope="bottleneck_3_1")
+        bottleneck_3_2 = encoder_bottleneck_dilated(x=bottleneck_3_1,
+                    output_depth=128, drop_prob=0.1, scope="bottleneck_3_2", dilation_rate=2)
+        bottleneck_3_3 = encoder_bottleneck_asymmetric(x=bottleneck_3_2,
+                    output_depth=128, drop_prob=0.1, scope="bottleneck_3_3")
+        bottleneck_3_4 = encoder_bottleneck_dilated(x=bottleneck_3_3,
+                    output_depth=128, drop_prob=0.1, scope="bottleneck_3_4", dilation_rate=4)
+        bottleneck_3_5 = encoder_bottleneck_regular(x=bottleneck_3_4,
+                    output_depth=128, drop_prob=0.1, scope="bottleneck_3_5")
+        bottleneck_3_6 = encoder_bottleneck_dilated(x=bottleneck_3_5,
+                    output_depth=128, drop_prob=0.1, scope="bottleneck_3_6", dilation_rate=8)
+        bottleneck_3_7 = encoder_bottleneck_asymmetric(x=bottleneck_3_6,
+                    output_depth=128, drop_prob=0.1, scope="bottleneck_3_7")
+        bottleneck_3_8 = encoder_bottleneck_dilated(x=bottleneck_3_7,
+                    output_depth=128, drop_prob=0.1, scope="bottleneck_3_8", dilation_rate=16)
+
+        # decoder:
+        bottleneck_4_0 = decoder_bottleneck(x=bottleneck_3_8,
+                    output_depth=64, scope="bottleneck_4_0",
+                    upsampling=True, pooling_indices=pooling_indices_2)
+        bottleneck_4_1 = decoder_bottleneck(x=bottleneck_4_0,
+                    output_depth=64, scope="bottleneck_4_1")
+        bottleneck_4_2 = decoder_bottleneck(x=bottleneck_4_1,
+                    output_depth=64, scope="bottleneck_4_2")
+
+        bottleneck_5_0 = decoder_bottleneck(x=bottleneck_4_2,
+                    output_depth=16, scope="bottleneck_5_0",
+                    upsampling=True, pooling_indices=pooling_indices_1)
+        bottleneck_5_1 = decoder_bottleneck(x=bottleneck_5_0,
+                    output_depth=16, scope="bottleneck_5_1")
+
+        # fullconv:
+        fullconv = tf.contrib.slim.conv2d_transpose(bottleneck_5_1, self.no_of_classes,
+                    [2, 2], stride=2, scope="fullconv", padding="SAME", activation_fn=None)
+
+        self.logits = fullconv
 
     def add_loss_op(self):
         """
@@ -95,28 +163,27 @@ class ENet_model(object):
         optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
         self.train_op = optimizer.minimize(self.loss)
 
-    def initial_block(self, x):
-        with tf.variable_scope("initial_block"):
-            # convolution branch:
-            W_conv = tf.get_variable("W",
-                        shape=[3, 3, 3, 13], # ([filter_height, filter_width, in_depth, out_depth])
-                        initializer=tf.contrib.layers.xavier_initializer())
-            b_conv = tf.get_variable("b", shape=[13] # ([out_depth]], one bias weight per out depth layer),
-                        initializer=tf.constant_initializer(0))
-            conv_branch = tf.nn.conv2d(x, W_conv, strides=[1, 2, 2, 1],
-                        padding="SAME") + b_conv
+    def initial_block(self, x, scope):
+        # convolution branch:
+        W_conv = tf.get_variable(scope + "/W",
+                    shape=[3, 3, 3, 13], # ([filter_height, filter_width, in_depth, out_depth])
+                    initializer=tf.contrib.layers.xavier_initializer())
+        b_conv = tf.get_variable(scope + "/b", shape=[13] # ([out_depth]], one bias weight per out depth layer),
+                    initializer=tf.constant_initializer(0))
+        conv_branch = tf.nn.conv2d(x, W_conv, strides=[1, 2, 2, 1],
+                    padding="SAME") + b_conv
 
-            # max pooling branch:
-            pool_branch = tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
-                        strides=[1, 2, 2, 1], padding="VALID")
+        # max pooling branch:
+        pool_branch = tf.nn.max_pool(x, ksize=[1, 2, 2, 1],
+                    strides=[1, 2, 2, 1], padding="VALID")
 
-            # concatenate the branches:
-            concat = tf.concat([conv_branch, pool_branch], axis=3) # (3: the depth axis)
+        # concatenate the branches:
+        concat = tf.concat([conv_branch, pool_branch], axis=3) # (3: the depth axis)
 
-            # apply batch normalization and PReLU:
-            output = tf.contrib.slim.batch_norm(concat,
-                        is_training=self.training_ph)
-            output = PReLU(output)
+        # apply batch normalization and PReLU:
+        output = tf.contrib.slim.batch_norm(concat,
+                    is_training=self.training_ph)
+        output = PReLU(output)
 
         return output
 
@@ -315,7 +382,7 @@ class ENet_model(object):
 
         return output
 
-    def decoder_bottleneck(self, x, output_depth, drop_prob, scope, proj_ratio=4, upsampling=False, pooling_indices=None):
+    def decoder_bottleneck(self, x, output_depth, scope, proj_ratio=4, upsampling=False, pooling_indices=None):
         # (decoder uses ReLU instead of PReLU)
 
         input_shape = x.get_shape().as_list()
