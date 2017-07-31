@@ -19,6 +19,10 @@ class ENet_model(object):
 
         self.logs_dir = "/home/fregu856/segmentation/training_logs"
         self.no_of_classes = 16
+        self.class_weights = [0, 0.5, 0.4] # TODO!
+        self.initial_lr = 5e-4 # TODO!
+        self.decay_steps =  1000 # TODO!
+        self.lr_decay_rate = 1e-1 # TODO!
 
         #
         self.create_model_dirs()
@@ -42,7 +46,6 @@ class ENet_model(object):
             os.makedirs(self.model_dir)
             os.makedirs(self.checkpoints_dir)
 
-
     def add_placeholder(self):
         """
         - DOES:
@@ -51,11 +54,11 @@ class ENet_model(object):
         # TODO!
 
         self.imgs_ph = 0
-        self.labels_ph = 0
+        self.onehot_labels_ph = 0
         self.keep_prob_ph = 0
         self.training_ph = 0
 
-    def create_feed_dict(self, imgs_batch, labels_batch=None, keep_prob=1, training=True):
+    def create_feed_dict(self, imgs_batch, onehot_labels_batch=None, keep_prob=1, training=True):
         """
         - DOES: returns a feed_dict mapping the placeholders to the actual
         input data (this is how we run the network on specific data).
@@ -65,10 +68,10 @@ class ENet_model(object):
         feed_dict[self.imgs_ph] = imgs_batch
         feed_dict[self.keep_prob_ph] = keep_prob
         feed_dict[self.training_ph] = training
-        if labels_batch is not None:
+        if onehot_labels_batch is not None:
             # only add the labels data if it's specified (during inference, we
             # won't have any labels):
-            feed_dict[self.labels_ph] = labels_batch
+            feed_dict[self.onehot_labels_ph] = onehot_labels_batch
 
     def add_logits(self):
         """
@@ -148,20 +151,28 @@ class ENet_model(object):
 
     def add_loss_op(self):
         """
-        - DOES: computes the CE loss for the batch.
+        - DOES: computes the weighted CE loss for the batch.
         """
 
-        # TODO!
-
-        self.loss = 0
+        weights = self.onehot_labels_ph*self.class_weights
+        weights = tf.reduce_sum(weights, 3)
+        # compute the weighted CE loss for each pixel in the batch:
+        loss_per_pixel = tf.losses.softmax_cross_entropy(onehot_labels=self.onehot_labels_ph,
+                    logits=self.logits, weights=weights)
+        # average the loss over all pixels to get the batch loss:
+        self.loss = tf.reduce_mean(loss_per_pixel)
 
     def add_train_op(self):
         """
         - DOES: creates a training operator for minimization of the loss.
         """
 
-        optimizer = tf.train.AdamOptimizer(learning_rate=self.lr)
-        self.train_op = optimizer.minimize(self.loss)
+        global_step = tf.Variable(0, trainable=False)
+        lr = tf.train.exponential_decay(learning_rate=self.initial_lr,
+                    global_step=global_step, decay_steps=self.decay_steps,
+                    decay_rate=self.lr_decay_rate, staircase=True)
+        optimizer = tf.train.AdamOptimizer(learning_rate=lr)
+        self.train_op = optimizer.minimize(self.loss, global_step=global_step) # (global_step will now automatically be incremented)
 
     def initial_block(self, x, scope):
         # convolution branch:
