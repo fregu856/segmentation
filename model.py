@@ -19,13 +19,14 @@ class ENet_model(object):
         self.lr = 0.001
 
         self.logs_dir = "/home/fregu856/segmentation/training_logs"
-        self.no_of_classes = 16
-        self.class_weights = [0, 0.5, 0.4] # TODO!
+        self.no_of_classes = 20
+        self.class_weights = np.ones((self.no_of_classes,)) # TODO!
         self.initial_lr = 5e-4 # TODO!
         self.decay_steps =  1000 # TODO!
         self.lr_decay_rate = 1e-1 # TODO!
         self.img_height = 512
         self.img_width = 1024
+        self.batch_size = 2
 
         #
         self.create_model_dirs()
@@ -55,14 +56,16 @@ class ENet_model(object):
         """
 
         self.imgs_ph = tf.placeholder(tf.float32,
-                    shape=[None, self.img_height, self.img_width, 3], # ([batch_size, img_heigth, img_width, 3])
+                    shape=[self.batch_size, self.img_height, self.img_width, 3], # ([batch_size, img_heigth, img_width, 3])
                     name="imgs_ph")
         self.onehot_labels_ph = tf.placeholder(tf.uint8,
-                    shape=[None, self.img_height, self.img_width, self.no_of_classes], # ([batch_size, img_heigth, img_width, no_of_classes])
+                    shape=[self.batch_size, self.img_height, self.img_width, self.no_of_classes], # ([batch_size, img_heigth, img_width, no_of_classes])
                     name="onehot_labels_ph")
         self.training_ph = tf.placeholder(tf.bool, name="training_ph")
+        self.early_drop_prob_ph = tf.placeholder(tf.float32, name="early_drop_prob_ph")
+        self.late_drop_prob_ph = tf.placeholder(tf.float32, name="late_drop_prob_ph")
 
-    def create_feed_dict(self, imgs_batch, onehot_labels_batch=None, keep_prob=1, training=True):
+    def create_feed_dict(self, imgs_batch, early_drop_prob, late_drop_prob, training, onehot_labels_batch=None):
         """
         - DOES: returns a feed_dict mapping the placeholders to the actual
         input data (this is how we run the network on specific data).
@@ -71,6 +74,8 @@ class ENet_model(object):
         feed_dict = {}
         feed_dict[self.imgs_ph] = imgs_batch
         feed_dict[self.training_ph] = training
+        feed_dict[self.early_drop_prob_ph] = early_drop_prob
+        feed_dict[self.late_drop_prob_ph] = late_drop_prob
         if onehot_labels_batch is not None:
             # only add the labels data if it's specified (during inference, we
             # won't have any labels):
@@ -85,65 +90,65 @@ class ENet_model(object):
         initial = self.initial_block(x=self.imgs_ph, scope="inital")
 
         bottleneck_1_0, pooling_indices_1 = self.encoder_bottleneck_regular(x=initial,
-                    output_depth=64, drop_prob=0.01, scope="bottleneck_1_0", downsampling=True)
+                    output_depth=64, drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_0", downsampling=True)
         bottleneck_1_1 = self.encoder_bottleneck_regular(x=bottleneck_1_0,
-                    output_depth=64, drop_prob=0.01, scope="bottleneck_1_1")
+                    output_depth=64, drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_1")
         bottleneck_1_2 = self.encoder_bottleneck_regular(x=bottleneck_1_1,
-                    output_depth=64, drop_prob=0.01, scope="bottleneck_1_2")
+                    output_depth=64, drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_2")
         bottleneck_1_3 = self.encoder_bottleneck_regular(x=bottleneck_1_2,
-                    output_depth=64, drop_prob=0.01, scope="bottleneck_1_3")
+                    output_depth=64, drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_3")
         bottleneck_1_4 = self.encoder_bottleneck_regular(x=bottleneck_1_3,
-                    output_depth=64, drop_prob=0.01, scope="bottleneck_1_4")
+                    output_depth=64, drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_4")
 
         bottleneck_2_0, pooling_indices_2 = self.encoder_bottleneck_regular(x=bottleneck_1_4,
-                    output_depth=128, drop_prob=0.1, scope="bottleneck_2_0", downsampling=True)
+                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_0", downsampling=True)
         bottleneck_2_1 = self.encoder_bottleneck_regular(x=bottleneck_2_0,
-                    output_depth=128, drop_prob=0.1, scope="bottleneck_2_1")
+                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_1")
         bottleneck_2_2 = self.encoder_bottleneck_dilated(x=bottleneck_2_1,
-                    output_depth=128, drop_prob=0.1, scope="bottleneck_2_2", dilation_rate=2)
+                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_2", dilation_rate=2)
         bottleneck_2_3 = self.encoder_bottleneck_asymmetric(x=bottleneck_2_2,
-                    output_depth=128, drop_prob=0.1, scope="bottleneck_2_3")
+                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_3")
         bottleneck_2_4 = self.encoder_bottleneck_dilated(x=bottleneck_2_3,
-                    output_depth=128, drop_prob=0.1, scope="bottleneck_2_4", dilation_rate=4)
+                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_4", dilation_rate=4)
         bottleneck_2_5 = self.encoder_bottleneck_regular(x=bottleneck_2_4,
-                    output_depth=128, drop_prob=0.1, scope="bottleneck_2_5")
+                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_5")
         bottleneck_2_6 = self.encoder_bottleneck_dilated(x=bottleneck_2_5,
-                    output_depth=128, drop_prob=0.1, scope="bottleneck_2_6", dilation_rate=8)
+                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_6", dilation_rate=8)
         bottleneck_2_7 = self.encoder_bottleneck_asymmetric(x=bottleneck_2_6,
-                    output_depth=128, drop_prob=0.1, scope="bottleneck_2_7")
+                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_7")
         bottleneck_2_8 = self.encoder_bottleneck_dilated(x=bottleneck_2_7,
-                    output_depth=128, drop_prob=0.1, scope="bottleneck_2_8", dilation_rate=16)
+                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_8", dilation_rate=16)
 
         bottleneck_3_1 = self.encoder_bottleneck_regular(x=bottleneck_2_8,
-                    output_depth=128, drop_prob=0.1, scope="bottleneck_3_1")
+                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_1")
         bottleneck_3_2 = self.encoder_bottleneck_dilated(x=bottleneck_3_1,
-                    output_depth=128, drop_prob=0.1, scope="bottleneck_3_2", dilation_rate=2)
+                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_2", dilation_rate=2)
         bottleneck_3_3 = self.encoder_bottleneck_asymmetric(x=bottleneck_3_2,
-                    output_depth=128, drop_prob=0.1, scope="bottleneck_3_3")
+                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_3")
         bottleneck_3_4 = self.encoder_bottleneck_dilated(x=bottleneck_3_3,
-                    output_depth=128, drop_prob=0.1, scope="bottleneck_3_4", dilation_rate=4)
+                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_4", dilation_rate=4)
         bottleneck_3_5 = self.encoder_bottleneck_regular(x=bottleneck_3_4,
-                    output_depth=128, drop_prob=0.1, scope="bottleneck_3_5")
+                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_5")
         bottleneck_3_6 = self.encoder_bottleneck_dilated(x=bottleneck_3_5,
-                    output_depth=128, drop_prob=0.1, scope="bottleneck_3_6", dilation_rate=8)
+                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_6", dilation_rate=8)
         bottleneck_3_7 = self.encoder_bottleneck_asymmetric(x=bottleneck_3_6,
-                    output_depth=128, drop_prob=0.1, scope="bottleneck_3_7")
+                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_7")
         bottleneck_3_8 = self.encoder_bottleneck_dilated(x=bottleneck_3_7,
-                    output_depth=128, drop_prob=0.1, scope="bottleneck_3_8", dilation_rate=16)
+                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_8", dilation_rate=16)
 
         # decoder:
-        bottleneck_4_0 = self.decoder__bottleneck(x=bottleneck_3_8,
+        bottleneck_4_0 = self.decoder_bottleneck(x=bottleneck_3_8,
                     output_depth=64, scope="bottleneck_4_0",
                     upsampling=True, pooling_indices=pooling_indices_2)
-        bottleneck_4_1 = self.decoder__bottleneck(x=bottleneck_4_0,
+        bottleneck_4_1 = self.decoder_bottleneck(x=bottleneck_4_0,
                     output_depth=64, scope="bottleneck_4_1")
-        bottleneck_4_2 = self.decoder__bottleneck(x=bottleneck_4_1,
+        bottleneck_4_2 = self.decoder_bottleneck(x=bottleneck_4_1,
                     output_depth=64, scope="bottleneck_4_2")
 
-        bottleneck_5_0 = self.decoder__bottleneck(x=bottleneck_4_2,
+        bottleneck_5_0 = self.decoder_bottleneck(x=bottleneck_4_2,
                     output_depth=16, scope="bottleneck_5_0",
                     upsampling=True, pooling_indices=pooling_indices_1)
-        bottleneck_5_1 = self.decoder__bottleneck(x=bottleneck_5_0,
+        bottleneck_5_1 = self.decoder_bottleneck(x=bottleneck_5_0,
                     output_depth=16, scope="bottleneck_5_1")
 
         # fullconv:
@@ -250,7 +255,7 @@ class ENet_model(object):
         # NOTE! no PReLU here
 
         # # regularizer:
-        conv_branch = spatial_dropout(conv_branch, drop_prob, training=self.training_ph)
+        conv_branch = spatial_dropout(conv_branch, drop_prob)
 
         # main branch:
         main_branch = x
@@ -323,7 +328,7 @@ class ENet_model(object):
         # NOTE! no PReLU here
 
         # # regularizer:
-        conv_branch = spatial_dropout(conv_branch, drop_prob, training=self.training_ph)
+        conv_branch = spatial_dropout(conv_branch, drop_prob)
 
         # main branch:
         main_branch = x
@@ -384,7 +389,7 @@ class ENet_model(object):
         # NOTE! no PReLU here
 
         # # regularizer:
-        conv_branch = spatial_dropout(conv_branch, drop_prob, training=self.training_ph)
+        conv_branch = spatial_dropout(conv_branch, drop_prob)
 
         # main branch:
         main_branch = x
@@ -420,6 +425,8 @@ class ENet_model(object):
 
             # # max unpooling:
             main_branch = max_unpool(main_branch, pooling_indices)
+
+        main_branch = tf.cast(main_branch, tf.float32)
 
         # convolution branch:
         conv_branch = x

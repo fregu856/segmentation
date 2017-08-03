@@ -60,10 +60,11 @@ def train_data_iterator(batch_size, session):
         yield (batch_imgs, batch_onehot_labels)
 
 no_of_epochs = 2
-batch_size = 2
 model_id = "1" # (change this to not overwrite all log data when you train the model)
 
 model = ENet_model(model_id)
+
+batch_size = model.batch_size
 
 # create a saver for saving all model variables/parameters:
 saver = tf.train.Saver(write_version = saver_pb2.SaverDef.V2)
@@ -89,10 +90,10 @@ with tf.Session() as sess:
 
         # run an epoch and get all batch losses:
         batch_losses = []
-        for step, (imgs, labels) in enumerate(train_data_iterator(batch_size, sess)):
+        for step, (imgs, onehot_labels) in enumerate(train_data_iterator(batch_size, sess)):
             # create a feed dict containing the batch data:
-            batch_feed_dict = model.create_feed_dict(imgs, labels_batch=labels,
-                        keep_prob=0.8)
+            batch_feed_dict = model.create_feed_dict(imgs, early_drop_prob=0.01,
+                        late_drop_prob=0.1, training=True, onehot_labels_batch=onehot_labels)
 
             # compute the batch loss and compute & apply all gradients w.r.t to
             # the batch loss (without model.train_op in the call, the network

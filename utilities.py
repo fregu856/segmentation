@@ -20,7 +20,7 @@ def PReLU(x, scope):
 
     return output
 
-def spatial_dropout(x, drop_prob, training=True):
+def spatial_dropout(x, drop_prob):
     """
     - DOES:
 
@@ -34,20 +34,17 @@ def spatial_dropout(x, drop_prob, training=True):
     # x is a tensor of shape [batch_size, fb_height, fb_width, fb_depth]
     # where fb stands for "feature block"
 
-    if training:
-        keep_prob = 1.0 - drop_prob
-        input_shape = x.get_shape().as_list()
+    keep_prob = 1.0 - drop_prob
+    input_shape = x.get_shape().as_list()
 
-        batch_size = input_shape[0]
-        fb_depth = input_shape[3]
+    batch_size = input_shape[0]
+    fb_depth = input_shape[3]
 
-        # drop each feature block layer with probability drop_prob:
-        noise_shape = tf.constant(value=[batch_size, 1, 1, fb_depth])
-        x_drop = tf.nn.dropout(x, keep_prob, noise_shape=noise_shape)
+    # drop each feature block layer with probability drop_prob:
+    noise_shape = tf.constant(value=[batch_size, 1, 1, fb_depth])
+    x_drop = tf.nn.dropout(x, keep_prob, noise_shape=noise_shape)
 
-        output = x_drop
-    else:
-        output = x
+    output = x_drop
 
     return output
 
@@ -75,11 +72,11 @@ def max_unpool(x, pooling_indices, kernel_shape=[1, 2, 2, 1]):
     batch_shape = tf.convert_to_tensor([batch_size, 1, 1, 1])
     batch_range = tf.reshape(tf.range(batch_size, dtype=tf.int32), shape=batch_shape)
 
-    b = ones_like_pooling_indices*batch_range
-    y = pooling_indices//(output_shape[2]*output_shape[3])
-    x = (pooling_indices//output_shape[3]) % output_shape[2]
+    b = tf.cast(ones_like_pooling_indices*batch_range, tf.int32)
+    y = tf.cast(pooling_indices//(output_shape[2]*output_shape[3]), tf.int32)
+    x = tf.cast((pooling_indices//output_shape[3]) % output_shape[2], tf.int32)
     feature_range = tf.range(fb_depth, dtype=tf.int32)
-    f = ones_like_pooling_indices*feature_range
+    f = tf.cast(ones_like_pooling_indices*feature_range, tf.int32)
 
     # transpose indices & reshape update values to one dimension
     input_size = tf.size(x)
