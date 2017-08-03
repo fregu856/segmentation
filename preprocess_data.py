@@ -5,9 +5,9 @@ import numpy as np
 import tensorflow as tf
 from collections import namedtuple
 
-project_dir = "/home/fregu856/segmentation/"
+project_dir = "/mnt/data/fredrik_data/segmentation/"
 
-cityscapes_dir = "/home/fregu856/data/cityscapes/"
+cityscapes_dir = "/mnt/data/cityscapes/"
 
 # (this is taken from the official Cityscapes scripts)
 Label = namedtuple( 'Label' , [

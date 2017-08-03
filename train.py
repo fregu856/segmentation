@@ -1,5 +1,7 @@
 import numpy as np
 import cPickle
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import tensorflow as tf
 from tensorflow.core.protobuf import saver_pb2
@@ -7,7 +9,7 @@ import cv2
 
 from model import ENet_model
 
-project_dir = "/home/fregu856/segmentation/"
+project_dir = "/mnt/data/fredrik_data/segmentation/"
 data_dir = project_dir + "data/"
 
 img_height = 1024
@@ -29,8 +31,6 @@ def train_data_iterator(batch_size, session):
     - DOES:
     """
 
-    # TODO!
-
     # load the training data from disk:
     train_trainId_label_paths = cPickle.load(open(data_dir + "train_trainId_label_paths.pkl"))
     train_img_paths = cPickle.load(open(data_dir + "train_img_paths.pkl"))
@@ -42,9 +42,9 @@ def train_data_iterator(batch_size, session):
 
     batch_pointer = 0
     for step in range(no_of_batches):
-        # get and yield the next batch_size imgs and labels from the training data:
-        batch_imgs = np.zeros((batch_size, img_height, img_width, 3))
-        batch_onehot_labels = np.zeros((batch_size, img_height, img_width, no_of_classes))
+        # get and yield the next batch_size imgs and onehot labels from the training data:
+        batch_imgs = np.zeros((batch_size, img_height, img_width, 3), dtype=np.float32)
+        batch_onehot_labels = np.zeros((batch_size, img_height, img_width, no_of_classes), dtype=np.float32)
         for i in range(batch_size):
             # read the next img:
             img = cv2.imread(train_img_paths[(batch_pointer + i)], -1)
@@ -53,7 +53,6 @@ def train_data_iterator(batch_size, session):
             trainId_label = cv2.imread(train_trainId_label_paths[(batch_pointer + i)], -1)
             onehot_label = tf.one_hot(indices=trainId_label, depth=no_of_classes)
             onehot_label = sess.run(onehot_label) # (convert to numpy array)
-            print onehot_label
             batch_onehot_labels[i] = onehot_label
         batch_pointer += batch_size
 

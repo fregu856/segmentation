@@ -18,14 +18,14 @@ class ENet_model(object):
 
         self.lr = 0.001
 
-        self.logs_dir = "/home/fregu856/segmentation/training_logs"
+        self.logs_dir = "/mnt/data/fredrik_data/segmentation/training_logs"
         self.no_of_classes = 20
         self.class_weights = np.ones((self.no_of_classes,)) # TODO!
         self.initial_lr = 5e-4 # TODO!
         self.decay_steps =  1000 # TODO!
         self.lr_decay_rate = 1e-1 # TODO!
-        self.img_height = 512
-        self.img_width = 1024
+        self.img_height = 1024
+        self.img_width = 2048
         self.batch_size = 2
 
         #
@@ -58,7 +58,7 @@ class ENet_model(object):
         self.imgs_ph = tf.placeholder(tf.float32,
                     shape=[self.batch_size, self.img_height, self.img_width, 3], # ([batch_size, img_heigth, img_width, 3])
                     name="imgs_ph")
-        self.onehot_labels_ph = tf.placeholder(tf.uint8,
+        self.onehot_labels_ph = tf.placeholder(tf.float32,
                     shape=[self.batch_size, self.img_height, self.img_width, self.no_of_classes], # ([batch_size, img_heigth, img_width, no_of_classes])
                     name="onehot_labels_ph")
         self.training_ph = tf.placeholder(tf.bool, name="training_ph")
@@ -80,6 +80,8 @@ class ENet_model(object):
             # only add the labels data if it's specified (during inference, we
             # won't have any labels):
             feed_dict[self.onehot_labels_ph] = onehot_labels_batch
+
+        return feed_dict
 
     def add_logits(self):
         """
