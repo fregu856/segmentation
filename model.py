@@ -1,14 +1,15 @@
 import numpy as np
 import tensorflow as tf
+import os
 
 from utilities import PReLU, spatial_dropout, max_unpool
 
 class ENet_model(object):
     """
     - DOES:
-    """"
+    """
 
-    def _init_(self, model_id):
+    def __init__(self, model_id):
         """
         - DOES:
         """
@@ -40,7 +41,7 @@ class ENet_model(object):
     def create_model_dirs(self):
         """
         - DOES:
-        """"
+        """
 
         self.model_dir = self.logs_dir + "/model_%s" % self.model_id
         self.checkpoints_dir = self.model_dir + "/checkpoints"
@@ -48,16 +49,16 @@ class ENet_model(object):
             os.makedirs(self.model_dir)
             os.makedirs(self.checkpoints_dir)
 
-    def add_placeholder(self):
+    def add_placeholders(self):
         """
         - DOES:
         """
 
-        self.imgs_ph = tf.placeholder(tf.int32,
-                    shape=[None, self.img_heigth, self.img_width, 3], # ([batch_size, img_heigth, img_width, 3])
+        self.imgs_ph = tf.placeholder(tf.float32,
+                    shape=[None, self.img_height, self.img_width, 3], # ([batch_size, img_heigth, img_width, 3])
                     name="imgs_ph")
         self.onehot_labels_ph = tf.placeholder(tf.uint8,
-                    shape=[None, self.img_heigth, self.img_width, self.no_of_classes], # ([batch_size, img_heigth, img_width, no_of_classes])
+                    shape=[None, self.img_height, self.img_width, self.no_of_classes], # ([batch_size, img_heigth, img_width, no_of_classes])
                     name="onehot_labels_ph")
         self.training_ph = tf.placeholder(tf.bool, name="training_ph")
 
@@ -83,66 +84,66 @@ class ENet_model(object):
         # encoder:
         initial = self.initial_block(x=self.imgs_ph, scope="inital")
 
-        bottleneck_1_0, pooling_indices_1 = encoder_bottleneck_regular(x=initial,
+        bottleneck_1_0, pooling_indices_1 = self.encoder_bottleneck_regular(x=initial,
                     output_depth=64, drop_prob=0.01, scope="bottleneck_1_0", downsampling=True)
-        bottleneck_1_1 = encoder_bottleneck_regular(x=bottleneck_1_0,
+        bottleneck_1_1 = self.encoder_bottleneck_regular(x=bottleneck_1_0,
                     output_depth=64, drop_prob=0.01, scope="bottleneck_1_1")
-        bottleneck_1_2 = encoder_bottleneck_regular(x=bottleneck_1_1,
+        bottleneck_1_2 = self.encoder_bottleneck_regular(x=bottleneck_1_1,
                     output_depth=64, drop_prob=0.01, scope="bottleneck_1_2")
-        bottleneck_1_3 = encoder_bottleneck_regular(x=bottleneck_1_2,
+        bottleneck_1_3 = self.encoder_bottleneck_regular(x=bottleneck_1_2,
                     output_depth=64, drop_prob=0.01, scope="bottleneck_1_3")
-        bottleneck_1_4 = encoder_bottleneck_regular(x=bottleneck_1_3,
+        bottleneck_1_4 = self.encoder_bottleneck_regular(x=bottleneck_1_3,
                     output_depth=64, drop_prob=0.01, scope="bottleneck_1_4")
 
-        bottleneck_2_0, pooling_indices_2 = encoder_bottleneck_regular(x=bottleneck_1_4,
+        bottleneck_2_0, pooling_indices_2 = self.encoder_bottleneck_regular(x=bottleneck_1_4,
                     output_depth=128, drop_prob=0.1, scope="bottleneck_2_0", downsampling=True)
-        bottleneck_2_1 = encoder_bottleneck_regular(x=bottleneck_2_0,
+        bottleneck_2_1 = self.encoder_bottleneck_regular(x=bottleneck_2_0,
                     output_depth=128, drop_prob=0.1, scope="bottleneck_2_1")
-        bottleneck_2_2 = encoder_bottleneck_dilated(x=bottleneck_2_1,
+        bottleneck_2_2 = self.encoder_bottleneck_dilated(x=bottleneck_2_1,
                     output_depth=128, drop_prob=0.1, scope="bottleneck_2_2", dilation_rate=2)
-        bottleneck_2_3 = encoder_bottleneck_asymmetric(x=bottleneck_2_2,
+        bottleneck_2_3 = self.encoder_bottleneck_asymmetric(x=bottleneck_2_2,
                     output_depth=128, drop_prob=0.1, scope="bottleneck_2_3")
-        bottleneck_2_4 = encoder_bottleneck_dilated(x=bottleneck_2_3,
+        bottleneck_2_4 = self.encoder_bottleneck_dilated(x=bottleneck_2_3,
                     output_depth=128, drop_prob=0.1, scope="bottleneck_2_4", dilation_rate=4)
-        bottleneck_2_5 = encoder_bottleneck_regular(x=bottleneck_2_4,
+        bottleneck_2_5 = self.encoder_bottleneck_regular(x=bottleneck_2_4,
                     output_depth=128, drop_prob=0.1, scope="bottleneck_2_5")
-        bottleneck_2_6 = encoder_bottleneck_dilated(x=bottleneck_2_5,
+        bottleneck_2_6 = self.encoder_bottleneck_dilated(x=bottleneck_2_5,
                     output_depth=128, drop_prob=0.1, scope="bottleneck_2_6", dilation_rate=8)
-        bottleneck_2_7 = encoder_bottleneck_asymmetric(x=bottleneck_2_6,
+        bottleneck_2_7 = self.encoder_bottleneck_asymmetric(x=bottleneck_2_6,
                     output_depth=128, drop_prob=0.1, scope="bottleneck_2_7")
-        bottleneck_2_8 = encoder_bottleneck_dilated(x=bottleneck_2_7,
+        bottleneck_2_8 = self.encoder_bottleneck_dilated(x=bottleneck_2_7,
                     output_depth=128, drop_prob=0.1, scope="bottleneck_2_8", dilation_rate=16)
 
-        bottleneck_3_1 = encoder_bottleneck_regular(x=bottleneck_2_8,
+        bottleneck_3_1 = self.encoder_bottleneck_regular(x=bottleneck_2_8,
                     output_depth=128, drop_prob=0.1, scope="bottleneck_3_1")
-        bottleneck_3_2 = encoder_bottleneck_dilated(x=bottleneck_3_1,
+        bottleneck_3_2 = self.encoder_bottleneck_dilated(x=bottleneck_3_1,
                     output_depth=128, drop_prob=0.1, scope="bottleneck_3_2", dilation_rate=2)
-        bottleneck_3_3 = encoder_bottleneck_asymmetric(x=bottleneck_3_2,
+        bottleneck_3_3 = self.encoder_bottleneck_asymmetric(x=bottleneck_3_2,
                     output_depth=128, drop_prob=0.1, scope="bottleneck_3_3")
-        bottleneck_3_4 = encoder_bottleneck_dilated(x=bottleneck_3_3,
+        bottleneck_3_4 = self.encoder_bottleneck_dilated(x=bottleneck_3_3,
                     output_depth=128, drop_prob=0.1, scope="bottleneck_3_4", dilation_rate=4)
-        bottleneck_3_5 = encoder_bottleneck_regular(x=bottleneck_3_4,
+        bottleneck_3_5 = self.encoder_bottleneck_regular(x=bottleneck_3_4,
                     output_depth=128, drop_prob=0.1, scope="bottleneck_3_5")
-        bottleneck_3_6 = encoder_bottleneck_dilated(x=bottleneck_3_5,
+        bottleneck_3_6 = self.encoder_bottleneck_dilated(x=bottleneck_3_5,
                     output_depth=128, drop_prob=0.1, scope="bottleneck_3_6", dilation_rate=8)
-        bottleneck_3_7 = encoder_bottleneck_asymmetric(x=bottleneck_3_6,
+        bottleneck_3_7 = self.encoder_bottleneck_asymmetric(x=bottleneck_3_6,
                     output_depth=128, drop_prob=0.1, scope="bottleneck_3_7")
-        bottleneck_3_8 = encoder_bottleneck_dilated(x=bottleneck_3_7,
+        bottleneck_3_8 = self.encoder_bottleneck_dilated(x=bottleneck_3_7,
                     output_depth=128, drop_prob=0.1, scope="bottleneck_3_8", dilation_rate=16)
 
         # decoder:
-        bottleneck_4_0 = decoder_bottleneck(x=bottleneck_3_8,
+        bottleneck_4_0 = self.decoder__bottleneck(x=bottleneck_3_8,
                     output_depth=64, scope="bottleneck_4_0",
                     upsampling=True, pooling_indices=pooling_indices_2)
-        bottleneck_4_1 = decoder_bottleneck(x=bottleneck_4_0,
+        bottleneck_4_1 = self.decoder__bottleneck(x=bottleneck_4_0,
                     output_depth=64, scope="bottleneck_4_1")
-        bottleneck_4_2 = decoder_bottleneck(x=bottleneck_4_1,
+        bottleneck_4_2 = self.decoder__bottleneck(x=bottleneck_4_1,
                     output_depth=64, scope="bottleneck_4_2")
 
-        bottleneck_5_0 = decoder_bottleneck(x=bottleneck_4_2,
+        bottleneck_5_0 = self.decoder__bottleneck(x=bottleneck_4_2,
                     output_depth=16, scope="bottleneck_5_0",
                     upsampling=True, pooling_indices=pooling_indices_1)
-        bottleneck_5_1 = decoder_bottleneck(x=bottleneck_5_0,
+        bottleneck_5_1 = self.decoder__bottleneck(x=bottleneck_5_0,
                     output_depth=16, scope="bottleneck_5_1")
 
         # fullconv:
@@ -181,7 +182,7 @@ class ENet_model(object):
         W_conv = tf.get_variable(scope + "/W",
                     shape=[3, 3, 3, 13], # ([filter_height, filter_width, in_depth, out_depth])
                     initializer=tf.contrib.layers.xavier_initializer())
-        b_conv = tf.get_variable(scope + "/b", shape=[13] # ([out_depth]], one bias weight per out depth layer),
+        b_conv = tf.get_variable(scope + "/b", shape=[13], # ([out_depth]], one bias weight per out depth layer),
                     initializer=tf.constant_initializer(0))
         conv_branch = tf.nn.conv2d(x, W_conv, strides=[1, 2, 2, 1],
                     padding="SAME") + b_conv
@@ -196,7 +197,7 @@ class ENet_model(object):
         # apply batch normalization and PReLU:
         output = tf.contrib.slim.batch_norm(concat,
                     is_training=self.training_ph)
-        output = PReLU(output)
+        output = PReLU(output, scope=scope)
 
         return output
 
@@ -224,19 +225,19 @@ class ENet_model(object):
                         padding="VALID") # NOTE! no bias terms
         # # # batch norm and PReLU:
         conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
-        conv_branch = PReLU(conv_branch)
+        conv_branch = PReLU(conv_branch, scope=scope + "/proj")
 
         # # conv:
         W_conv = tf.get_variable(scope + "/W_conv",
                     shape=[3, 3, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
                     initializer=tf.contrib.layers.xavier_initializer())
-        b_conv = tf.get_variable(scope + "/b_conv", shape=[internal_depth] # ([out_depth]], one bias weight per out depth layer),
+        b_conv = tf.get_variable(scope + "/b_conv", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
                     initializer=tf.constant_initializer(0))
         conv_branch = tf.nn.conv2d(conv_branch, W_conv, strides=[1, 1, 1, 1],
                     padding="SAME") + b_conv
         # # # batch norm and PReLU:
         conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
-        conv_branch = PReLU(conv_branch)
+        conv_branch = PReLU(conv_branch, scope=scope + "/conv")
 
         # # 1x1 expansion:
         W_exp = tf.get_variable(scope + "/W_exp",
@@ -273,7 +274,7 @@ class ENet_model(object):
         # add the branches:
         merged = conv_branch + main_branch
         # apply PReLU:
-        output = PReLU(merged)
+        output = PReLU(merged, scope=scope + "/output")
 
         if downsampling:
             return output, pooling_indices
@@ -297,19 +298,19 @@ class ENet_model(object):
                     padding="VALID") # NOTE! no bias terms
         # # # batch norm and PReLU:
         conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
-        conv_branch = PReLU(conv_branch)
+        conv_branch = PReLU(conv_branch, scope=scope + "/proj")
 
         # # dilated conv:
         W_conv = tf.get_variable(scope + "/W_conv",
                     shape=[3, 3, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
                     initializer=tf.contrib.layers.xavier_initializer())
-        b_conv = tf.get_variable(scope + "/b_conv", shape=[internal_depth] # ([out_depth]], one bias weight per out depth layer),
+        b_conv = tf.get_variable(scope + "/b_conv", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
                     initializer=tf.constant_initializer(0))
         conv_branch = tf.nn.atrous_conv2d(conv_branch, W_conv, rate=dilation_rate,
                     padding="SAME") + b_conv
         # # # batch norm and PReLU:
         conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
-        conv_branch = PReLU(conv_branch)
+        conv_branch = PReLU(conv_branch, scope=scope + "/conv")
 
         # # 1x1 expansion:
         W_exp = tf.get_variable(scope + "/W_exp",
@@ -330,7 +331,7 @@ class ENet_model(object):
         # add the branches:
         merged = conv_branch + main_branch
         # apply PReLU:
-        output = PReLU(merged)
+        output = PReLU(merged, scope=scope + "/output")
 
         return output
 
@@ -351,7 +352,7 @@ class ENet_model(object):
                     padding="VALID") # NOTE! no bias terms
         # # # batch norm and PReLU:
         conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
-        conv_branch = PReLU(conv_branch)
+        conv_branch = PReLU(conv_branch, scope=scope + "/proj")
 
         # # asymmetric conv:
         # # # asymmetric conv 1:
@@ -364,13 +365,13 @@ class ENet_model(object):
         W_conv2 = tf.get_variable(scope + "/W_conv2",
                     shape=[1, 5, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
                     initializer=tf.contrib.layers.xavier_initializer())
-        b_conv2 = tf.get_variable(scope + "/b_conv2", shape=[internal_depth] # ([out_depth]], one bias weight per out depth layer),
+        b_conv2 = tf.get_variable(scope + "/b_conv2", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
                     initializer=tf.constant_initializer(0))
         conv_branch = tf.nn.conv2d(conv_branch, W_conv2, strides=[1, 1, 1, 1],
                     padding="SAME") + b_conv2
         # # # batch norm and PReLU:
         conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
-        conv_branch = PReLU(conv_branch)
+        conv_branch = PReLU(conv_branch, scope=scope + "/conv")
 
         # # 1x1 expansion:
         W_exp = tf.get_variable(scope + "/W_exp",
@@ -391,7 +392,7 @@ class ENet_model(object):
         # add the branches:
         merged = conv_branch + main_branch
         # apply PReLU:
-        output = PReLU(merged)
+        output = PReLU(merged, scope=scope + "/output")
 
         return output
 
@@ -439,18 +440,18 @@ class ENet_model(object):
             W_conv = tf.get_variable(scope + "/W_conv",
                         shape=[3, 3, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
                         initializer=tf.contrib.layers.xavier_initializer())
-            b_conv = tf.get_variable(scope + "/b_conv", shape=[internal_depth] # ([out_depth]], one bias weight per out depth layer),
+            b_conv = tf.get_variable(scope + "/b_conv", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
                         initializer=tf.constant_initializer(0))
             main_branch_shape = main_branch.get_shape().as_list()
             output_shape = tf.convert_to_tensor([main_branch_shape[0],
                         main_branch_shape[1], main_branch_shape[2], internal_depth])
-            conv_branch = tf.nn.conv2d_transpose(conv_branch, W_conv, output_shape=output_shape
+            conv_branch = tf.nn.conv2d_transpose(conv_branch, W_conv, output_shape=output_shape,
                         strides=[1, 2, 2, 1], padding="SAME") + b_conv
         else:
             W_conv = tf.get_variable(scope + "/W_conv",
                         shape=[3, 3, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
                         initializer=tf.contrib.layers.xavier_initializer())
-            b_conv = tf.get_variable(scope + "/b_conv", shape=[internal_depth] # ([out_depth]], one bias weight per out depth layer),
+            b_conv = tf.get_variable(scope + "/b_conv", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
                         initializer=tf.constant_initializer(0))
             conv_branch = tf.nn.conv2d(conv_branch, W_conv, strides=[1, 1, 1, 1],
                         padding="SAME") + b_conv

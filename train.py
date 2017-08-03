@@ -7,6 +7,13 @@ import cv2
 
 from model import ENet_model
 
+project_dir = "/home/fregu856/segmentation/"
+data_dir = project_dir + "data/"
+
+img_height = 1024
+img_width = 2048
+no_of_classes = 20
+
 def evaluate_on_val():
     """
     - DOES:
@@ -17,7 +24,7 @@ def evaluate_on_val():
     val_loss = 0
     return val_loss
 
-def train_data_iterator(batch_size):
+def train_data_iterator(batch_size, session):
     """
     - DOES:
     """
@@ -25,35 +32,35 @@ def train_data_iterator(batch_size):
     # TODO!
 
     # load the training data from disk:
-    train_data = cPickle.load(open(data_gray_noise_dir + "train_data"))
-    train_img_paths, train_labels = zip(*train_data)
+    train_trainId_label_paths = cPickle.load(open(data_dir + "train_trainId_label_paths.pkl"))
+    train_img_paths = cPickle.load(open(data_dir + "train_img_paths.pkl"))
 
     # compute the number of batches needed to iterate through the training data:
     global no_of_batches
-    no_of_train_imgs = len(train_labels)
+    no_of_train_imgs = len(train_img_paths)
     no_of_batches = int(no_of_train_imgs/batch_size)
 
     batch_pointer = 0
     for step in range(no_of_batches):
         # get and yield the next batch_size imgs and labels from the training data:
-        batch_imgs = []
-        batch_labels = []
+        batch_imgs = np.zeros((batch_size, img_height, img_width, 3))
+        batch_onehot_labels = np.zeros((batch_size, img_height, img_width, no_of_classes))
         for i in range(batch_size):
             # read the next img:
             img = cv2.imread(train_img_paths[(batch_pointer + i)], -1)
-            # resize and rescale the img:
-            img = cv2.resize(img, (200, 66))/255.0
-            img = np.reshape(img, (66, 200, 1))
-            batch_imgs.append(img)
+            batch_imgs[i] = img
 
-            # get the next label:
-            batch_labels.append(train_labels[(batch_pointer + i)])
+            trainId_label = cv2.imread(train_trainId_label_paths[(batch_pointer + i)], -1)
+            onehot_label = tf.one_hot(indices=trainId_label, depth=no_of_classes)
+            onehot_label = sess.run(onehot_label) # (convert to numpy array)
+            print onehot_label
+            batch_onehot_labels[i] = onehot_label
         batch_pointer += batch_size
 
-        yield (batch_imgs, batch_labels)
+        yield (batch_imgs, batch_onehot_labels)
 
-no_of_epochs = 40
-batch_size = 128
+no_of_epochs = 2
+batch_size = 2
 model_id = "1" # (change this to not overwrite all log data when you train the model)
 
 model = ENet_model(model_id)
@@ -82,7 +89,7 @@ with tf.Session() as sess:
 
         # run an epoch and get all batch losses:
         batch_losses = []
-        for step, (imgs, labels) in enumerate(train_data_iterator(batch_size)):
+        for step, (imgs, labels) in enumerate(train_data_iterator(batch_size, sess)):
             # create a feed dict containing the batch data:
             batch_feed_dict = model.create_feed_dict(imgs, labels_batch=labels,
                         keep_prob=0.8)
@@ -116,7 +123,7 @@ with tf.Session() as sess:
 
         if val_loss < max(best_epoch_losses): # (if top 5 performance on val:)
             # save the model weights to disk:
-            checkpoint_path = model.checkpoints_dir + "/model_" +
+            checkpoint_path = (model.checkpoints_dir + "/model_" +
                         model.model_id + "_epoch_" + str(epoch + 1) + ".ckpt")
             saver.save(sess, checkpoint_path)
             print "checkpoint saved in file: %s" % checkpoint_path

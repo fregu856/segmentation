@@ -1,4 +1,6 @@
-def PReLU(x):
+import tensorflow as tf
+
+def PReLU(x, scope):
     """
     - DOES:
 
@@ -11,7 +13,7 @@ def PReLU(x):
 
     # (PReLU(x) = x if x > 0, alpha*x otherwise)
 
-    alpha = tf.get_variable("alpha", shape=[1],
+    alpha = tf.get_variable(scope + "/alpha", shape=[1],
                 initializer=tf.constant_initializer(0), dtype=tf.float32)
 
     output = tf.nn.relu(x) + alpha*(x - abs(x))*0.5
@@ -58,6 +60,8 @@ def max_unpool(x, pooling_indices, kernel_shape=[1, 2, 2, 1]):
     - OUTPUT:
     """
 
+    # TODO! understand this code properly and comment!
+
     # (based on the implementation by kwotsin)
 
     input_shape = x.get_shape().as_list()
@@ -68,19 +72,20 @@ def max_unpool(x, pooling_indices, kernel_shape=[1, 2, 2, 1]):
                 fb_width*kernel_shape[2], fb_depth)
 
     ones_like_pooling_indices = tf.ones_like(pooling_indices, dtype=tf.int32)
-    batch_shape = tf.concat([[input_shape[0]], [1], [1], [1]], 0)
-    batch_range = tf.reshape(tf.range(output_shape[0], dtype=tf.int32), shape=batch_shape)
-    b = one_like_mask * batch_range
-    y = mask // (output_shape[2] * output_shape[3])
-    x = (mask // output_shape[3]) % output_shape[2] #mask % (output_shape[2] * output_shape[3]) // output_shape[3]
-    feature_range = tf.range(output_shape[3], dtype=tf.int32)
-    f = one_like_mask * feature_range
+    batch_shape = tf.convert_to_tensor([batch_size, 1, 1, 1])
+    batch_range = tf.reshape(tf.range(batch_size, dtype=tf.int32), shape=batch_shape)
+
+    b = ones_like_pooling_indices*batch_range
+    y = pooling_indices//(output_shape[2]*output_shape[3])
+    x = (pooling_indices//output_shape[3]) % output_shape[2]
+    feature_range = tf.range(fb_depth, dtype=tf.int32)
+    f = ones_like_pooling_indices*feature_range
 
     # transpose indices & reshape update values to one dimension
-    updates_size = tf.size(updates)
-    indices = tf.transpose(tf.reshape(tf.stack([b, y, x, f]), [4, updates_size]))
-    values = tf.reshape(updates, [updates_size])
-    ret = tf.scatter_nd(indices, values, output_shape)
-    return ret
+    input_size = tf.size(x)
+    indices = tf.transpose(tf.reshape(tf.stack([b, y, x, f]), [4, input_size]))
+    values = tf.reshape(x, [input_size])
 
-    return 0
+    output = tf.scatter_nd(indices, values, output_shape)
+
+    return output
