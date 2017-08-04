@@ -18,15 +18,16 @@ class ENet_model(object):
 
         self.lr = 0.001
 
-        self.logs_dir = "/mnt/data/fredrik_data/segmentation/training_logs"
+        #self.logs_dir = "/home/fregu856/segmentation/training_logs/"
+        self.logs_dir = "/mnt/data/fredrik_data/segmentation/training_logs/"
         self.no_of_classes = 20
         self.class_weights = np.ones((self.no_of_classes,)) # TODO!
         self.initial_lr = 5e-4 # TODO!
         self.decay_steps =  1000 # TODO!
         self.lr_decay_rate = 1e-1 # TODO!
-        self.img_height = 1024
-        self.img_width = 2048
-        self.batch_size = 2
+        self.img_height = 256
+        self.img_width = 512
+        self.batch_size = 4
 
         #
         self.create_model_dirs()
@@ -44,8 +45,8 @@ class ENet_model(object):
         - DOES:
         """
 
-        self.model_dir = self.logs_dir + "/model_%s" % self.model_id
-        self.checkpoints_dir = self.model_dir + "/checkpoints"
+        self.model_dir = self.logs_dir + "model_%s" % self.model_id + "/"
+        self.checkpoints_dir = self.model_dir + "checkpoints/"
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
             os.makedirs(self.checkpoints_dir)

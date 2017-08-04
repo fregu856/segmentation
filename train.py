@@ -9,21 +9,49 @@ import cv2
 
 from model import ENet_model
 
+#project_dir = "/home/fregu856/segmentation/"
 project_dir = "/mnt/data/fredrik_data/segmentation/"
 data_dir = project_dir + "data/"
 
-img_height = 1024
-img_width = 2048
+img_height = 256
+img_width = 512
 no_of_classes = 20
 
-def evaluate_on_val():
+def evaluate_on_val(batch_size, sess):
     """
     - DOES:
     """
 
-    # TODO!
+    # load the val data from disk:
+    val_trainId_label_paths = cPickle.load(open(data_dir + "val_trainId_label_paths.pkl"))
+    val_img_paths = cPickle.load(open(data_dir + "val_img_paths.pkl"))
 
-    val_loss = 0
+    batch_imgs = np.zeros((batch_size, img_height, img_width, 3), dtype=np.float32)
+    batch_onehot_labels = np.zeros((batch_size, img_height, img_width, no_of_classes), dtype=np.float32)
+    for i in range(batch_size):
+        # read the next img:
+        img = cv2.imread(val_img_paths[i], -1)
+        cv2.imwrite("img_" + str(i) + ".png", img)
+        batch_imgs[i] = img
+
+        trainId_label = cv2.imread(val_trainId_label_paths[i], -1)
+        onehot_label = tf.one_hot(indices=trainId_label, depth=no_of_classes)
+        onehot_label = sess.run(onehot_label) # (convert to numpy array)
+        batch_onehot_labels[i] = onehot_label
+
+    batch_feed_dict = model.create_feed_dict(batch_imgs, early_drop_prob=0.0,
+                late_drop_prob=0.0, training=False, onehot_labels_batch=batch_onehot_labels)
+
+    batch_loss, logits = sess.run([model.loss, model.logits],
+                feed_dict=batch_feed_dict)
+
+    predictions = np.argmax(logits, axis=3)
+
+    for i in range(batch_size):
+        prediction = predictions[i]
+        cv2.imwrite("pred_" + str(i) + ".png", prediction)
+
+    val_loss = batch_loss
     return val_loss
 
 def train_data_iterator(batch_size, session):
@@ -58,7 +86,7 @@ def train_data_iterator(batch_size, session):
 
         yield (batch_imgs, batch_onehot_labels)
 
-no_of_epochs = 2
+no_of_epochs = 30
 model_id = "1" # (change this to not overwrite all log data when you train the model)
 
 model = ENet_model(model_id)
@@ -108,24 +136,25 @@ with tf.Session() as sess:
         # save the train epoch loss:
         train_loss_per_epoch.append(train_epoch_loss)
         # save the train epoch losses to disk:
-        cPickle.dump(train_loss_per_epoch, open("%s/train_loss_per_epoch.pkl"
+        cPickle.dump(train_loss_per_epoch, open("%strain_loss_per_epoch.pkl"
                     % model.model_dir, "w"))
         print "training loss: %g" % train_epoch_loss
 
         # run the model on the validation data:
-        val_loss = evaluate_on_val()
+        val_loss = evaluate_on_val(batch_size, sess)
         # save the val epoch loss:
         val_loss_per_epoch.append(val_loss)
         # save the val epoch losses to disk:
-        cPickle.dump(val_loss_per_epoch, open("%s/val_loss_per_epoch.pkl"\
+        cPickle.dump(val_loss_per_epoch, open("%sval_loss_per_epoch.pkl"\
                     % model.model_dir, "w"))
         print "validaion loss: %g" % val_loss
 
         if val_loss < max(best_epoch_losses): # (if top 5 performance on val:)
             # save the model weights to disk:
-            checkpoint_path = (model.checkpoints_dir + "/model_" +
+            checkpoint_path = (model.checkpoints_dir + "model_" +
                         model.model_id + "_epoch_" + str(epoch + 1) + ".ckpt")
-            saver.save(sess, checkpoint_path)
+            print checkpoint_path
+            #saver.save(sess, checkpoint_path)
             print "checkpoint saved in file: %s" % checkpoint_path
 
             # update the top 5 val losses:
@@ -139,7 +168,7 @@ with tf.Session() as sess:
         plt.ylabel("loss")
         plt.xlabel("epoch")
         plt.title("training loss per epoch")
-        plt.savefig("%s/train_loss_per_epoch.png" % model.model_dir)
+        plt.savefig("%strain_loss_per_epoch.png" % model.model_dir)
         plt.close(1)
 
         # plot the val loss vs epoch and save to disk:
@@ -149,5 +178,7 @@ with tf.Session() as sess:
         plt.ylabel("loss")
         plt.xlabel("epoch")
         plt.title("validation loss per epoch")
-        plt.savefig("%s/val_loss_per_epoch.png" % model.model_dir)
+        plt.savefig("%sval_loss_per_epoch.png" % model.model_dir)
         plt.close(1)
+
+print "End of file"

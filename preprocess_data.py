@@ -5,8 +5,10 @@ import numpy as np
 import tensorflow as tf
 from collections import namedtuple
 
-project_dir = "/mnt/data/fredrik_data/segmentation/"
+# project_dir = "/home/fregu856/segmentation/"
+# cityscapes_dir = "/home/fregu856/data/cityscapes/"
 
+project_dir = "/mnt/data/fredrik_data/segmentation/"
 cityscapes_dir = "/mnt/data/cityscapes/"
 
 # (this is taken from the official Cityscapes scripts)
@@ -91,8 +93,10 @@ id_to_class = {label.id: label.name for label in labels}
 id_to_trainId = {label.id: label.trainId for label in labels}
 id_to_trainId_map_func = np.vectorize(id_to_trainId.get)
 
-img_height = 1024
-img_width = 2048
+original_img_height = 1024
+original_img_width = 2048
+new_img_height = 256
+new_img_width = 512
 no_of_classes = 20
 
 train_imgs_dir = cityscapes_dir + "leftImg8bit/train/"
@@ -115,14 +119,19 @@ for dir in train_dirs:
         print step
 
         img_path = img_dir + file_name
-        train_img_paths.append(img_path)
-
+        img = cv2.imread(img_path, -1)
         img_id = file_name.split("_left")[0]
+
+        img_small = cv2.resize(img, (new_img_width, new_img_height), interpolation=cv2.INTER_NEAREST)
+        img_small_path = project_dir + "data/" + img_id + ".png"
+        cv2.imwrite(img_small_path, img_small)
+        train_img_paths.append(img_small_path)
 
         gt_img_path = train_gt_dir + dir + img_id + "_gtFine_labelIds.png"
         gt_img = cv2.imread(gt_img_path, -1)
+        gt_img_small = cv2.resize(gt_img, (new_img_width, new_img_height), interpolation=cv2.INTER_NEAREST)
 
-        id_label = gt_img
+        id_label = gt_img_small
         trainId_label = id_to_trainId_map_func(id_label)
 
         trainId_label_path = project_dir + "data/" + img_id + "_trainId_label.png"
@@ -148,14 +157,19 @@ for dir in val_dirs:
         print step
 
         img_path = img_dir + file_name
-        val_img_paths.append(img_path)
-
+        img = cv2.imread(img_path, -1)
         img_id = file_name.split("_left")[0]
+
+        img_small = cv2.resize(img, (new_img_width, new_img_height), interpolation=cv2.INTER_NEAREST)
+        img_small_path = project_dir + "data/" + img_id + ".png"
+        cv2.imwrite(img_small_path, img_small)
+        val_img_paths.append(img_small_path)
 
         gt_img_path = val_gt_dir + dir + img_id + "_gtFine_labelIds.png"
         gt_img = cv2.imread(gt_img_path, -1)
+        gt_img_small = cv2.resize(gt_img, (new_img_width, new_img_height), interpolation=cv2.INTER_NEAREST)
 
-        id_label = gt_img
+        id_label = gt_img_small
         trainId_label = id_to_trainId_map_func(id_label)
 
         trainId_label_path = project_dir + "data/" + img_id + "_trainId_label.png"
@@ -169,19 +183,3 @@ cPickle.dump(val_img_paths,
 
 val_trainId_label_paths = cPickle.load(open(project_dir + "data/val_trainId_label_paths.pkl"))
 val_img_paths = cPickle.load(open(project_dir + "data/val_img_paths.pkl"))
-
-
-
-
-
-
-
-
-
-
-# sess = tf.InteractiveSession()
-# for path in train_trainId_label_paths:
-#     trainId_label = cv2.imread(path, -1)
-#
-#     onehot_label = tf.one_hot(indices=trainId_label, depth=no_of_classes)
-#     onehot_label_np = onehot_label.eval()
