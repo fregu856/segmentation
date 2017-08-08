@@ -8,8 +8,8 @@ from collections import namedtuple
 # project_dir = "/home/fregu856/segmentation/"
 # cityscapes_dir = "/home/fregu856/data/cityscapes/"
 
-project_dir = "/mnt/data/fredrik_data/segmentation/"
-cityscapes_dir = "/mnt/data/cityscapes/"
+project_dir = "/root/segmentation/"
+cityscapes_dir = "/root/cityscapes/"
 
 # (this is taken from the official Cityscapes scripts)
 Label = namedtuple( 'Label' , [
@@ -105,8 +105,13 @@ val_imgs_dir = cityscapes_dir + "leftImg8bit/val/"
 train_gt_dir = cityscapes_dir + "gtFine/train/"
 val_gt_dir = cityscapes_dir + "gtFine/val/"
 
-train_dirs = ["jena/"] # TODO! add all dirs
-val_dirs = ["frankfurt/"] # TODO! add all dirs
+# train_dirs = ["jena/", "zurich/", "weimar/", "ulm/", "tubingen/", "stuttgart/",
+#             "strasbourg/", "monchengladbach/", "krefeld/", "hanover/",
+#             "hamburg/", "erfurt/", "dusselford/", "darmstadt/", "cologne/",
+#             "bremen/", "bochum/", "aachen/"]
+train_dirs = ["jena/"]
+# val_dirs = ["frankfurt/", "munster/", "lindau/"]
+val_dirs = ["frankfurt/"]
 
 train_img_paths = []
 train_trainId_label_paths = []

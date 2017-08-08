@@ -10,7 +10,7 @@ import cv2
 from model import ENet_model
 
 #project_dir = "/home/fregu856/segmentation/"
-project_dir = "/mnt/data/fredrik_data/segmentation/"
+project_dir = "/root/segmentation/"
 data_dir = project_dir + "data/"
 
 img_height = 256
@@ -27,7 +27,8 @@ def evaluate_on_val(batch_size, sess):
     val_img_paths = cPickle.load(open(data_dir + "val_img_paths.pkl"))
 
     batch_imgs = np.zeros((batch_size, img_height, img_width, 3), dtype=np.float32)
-    batch_onehot_labels = np.zeros((batch_size, img_height, img_width, no_of_classes), dtype=np.float32)
+    #batch_onehot_labels = np.zeros((batch_size, img_height, img_width, no_of_classes), dtype=np.float32)
+    batch_onehot_labels = np.zeros((batch_size, img_height, img_width), dtype=np.int32)
     for i in range(batch_size):
         # read the next img:
         img = cv2.imread(val_img_paths[i], -1)
@@ -35,9 +36,10 @@ def evaluate_on_val(batch_size, sess):
         batch_imgs[i] = img
 
         trainId_label = cv2.imread(val_trainId_label_paths[i], -1)
-        onehot_label = tf.one_hot(indices=trainId_label, depth=no_of_classes)
-        onehot_label = sess.run(onehot_label) # (convert to numpy array)
-        batch_onehot_labels[i] = onehot_label
+        # onehot_label = tf.one_hot(indices=trainId_label, depth=no_of_classes)
+        # onehot_label = sess.run(onehot_label) # (convert to numpy array)
+        # batch_onehot_labels[i] = onehot_label
+        batch_onehot_labels[i] = trainId_label
 
     batch_feed_dict = model.create_feed_dict(batch_imgs, early_drop_prob=0.0,
                 late_drop_prob=0.0, training=False, onehot_labels_batch=batch_onehot_labels)
@@ -72,21 +74,23 @@ def train_data_iterator(batch_size, session):
     for step in range(no_of_batches):
         # get and yield the next batch_size imgs and onehot labels from the training data:
         batch_imgs = np.zeros((batch_size, img_height, img_width, 3), dtype=np.float32)
-        batch_onehot_labels = np.zeros((batch_size, img_height, img_width, no_of_classes), dtype=np.float32)
+        #batch_onehot_labels = np.zeros((batch_size, img_height, img_width, no_of_classes), dtype=np.float32)
+        batch_onehot_labels = np.zeros((batch_size, img_height, img_width), dtype=np.int32)
         for i in range(batch_size):
             # read the next img:
             img = cv2.imread(train_img_paths[(batch_pointer + i)], -1)
             batch_imgs[i] = img
 
             trainId_label = cv2.imread(train_trainId_label_paths[(batch_pointer + i)], -1)
-            onehot_label = tf.one_hot(indices=trainId_label, depth=no_of_classes)
-            onehot_label = sess.run(onehot_label) # (convert to numpy array)
-            batch_onehot_labels[i] = onehot_label
+            # onehot_label = tf.one_hot(indices=trainId_label, depth=no_of_classes)
+            # onehot_label = sess.run(onehot_label) # (convert to numpy array)
+            # batch_onehot_labels[i] = onehot_label
+            batch_onehot_labels[i] = trainId_label
         batch_pointer += batch_size
 
         yield (batch_imgs, batch_onehot_labels)
 
-no_of_epochs = 30
+no_of_epochs = 120
 model_id = "1" # (change this to not overwrite all log data when you train the model)
 
 model = ENet_model(model_id)
@@ -94,7 +98,7 @@ model = ENet_model(model_id)
 batch_size = model.batch_size
 
 # create a saver for saving all model variables/parameters:
-saver = tf.train.Saver(write_version = saver_pb2.SaverDef.V2)
+saver = tf.train.Saver(write_version=tf.train.SaverDef.V2)
 
 # initialize all log data containers:
 train_loss_per_epoch = []
@@ -104,7 +108,9 @@ val_loss_per_epoch = []
 # makes sense to save a model checkpoint):
 best_epoch_losses = [1000, 1000, 1000, 1000, 1000]
 
-with tf.Session() as sess:
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+with tf.Session(config = config) as sess:
     # initialize all variables/parameters:
     init = tf.global_variables_initializer()
     sess.run(init)
@@ -153,8 +159,7 @@ with tf.Session() as sess:
             # save the model weights to disk:
             checkpoint_path = (model.checkpoints_dir + "model_" +
                         model.model_id + "_epoch_" + str(epoch + 1) + ".ckpt")
-            print checkpoint_path
-            #saver.save(sess, checkpoint_path)
+            saver.save(sess, checkpoint_path)
             print "checkpoint saved in file: %s" % checkpoint_path
 
             # update the top 5 val losses:
@@ -180,5 +185,3 @@ with tf.Session() as sess:
         plt.title("validation loss per epoch")
         plt.savefig("%sval_loss_per_epoch.png" % model.model_dir)
         plt.close(1)
-
-print "End of file"

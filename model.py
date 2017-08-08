@@ -27,7 +27,7 @@ class ENet_model(object):
         self.lr_decay_rate = 1e-1 # TODO!
         self.img_height = 256
         self.img_width = 512
-        self.batch_size = 4
+        self.batch_size = 16
 
         #
         self.create_model_dirs()
@@ -59,8 +59,11 @@ class ENet_model(object):
         self.imgs_ph = tf.placeholder(tf.float32,
                     shape=[self.batch_size, self.img_height, self.img_width, 3], # ([batch_size, img_heigth, img_width, 3])
                     name="imgs_ph")
-        self.onehot_labels_ph = tf.placeholder(tf.float32,
-                    shape=[self.batch_size, self.img_height, self.img_width, self.no_of_classes], # ([batch_size, img_heigth, img_width, no_of_classes])
+        # self.onehot_labels_ph = tf.placeholder(tf.float32,
+        #             shape=[self.batch_size, self.img_height, self.img_width, self.no_of_classes], # ([batch_size, img_heigth, img_width, no_of_classes])
+        #             name="onehot_labels_ph")
+        self.onehot_labels_ph = tf.placeholder(tf.int32,
+                    shape=[self.batch_size, self.img_height, self.img_width], # ([batch_size, img_heigth, img_width, no_of_classes])
                     name="onehot_labels_ph")
         self.training_ph = tf.placeholder(tf.bool, name="training_ph")
         self.early_drop_prob_ph = tf.placeholder(tf.float32, name="early_drop_prob_ph")
@@ -90,86 +93,117 @@ class ENet_model(object):
         """
 
         # encoder:
-        initial = self.initial_block(x=self.imgs_ph, scope="inital")
+        network = self.initial_block(x=self.imgs_ph, scope="inital")
+        print network.get_shape().as_list()
 
-        bottleneck_1_0, pooling_indices_1 = self.encoder_bottleneck_regular(x=initial,
+        network, pooling_indices_1 = self.encoder_bottleneck_regular(x=network,
                     output_depth=64, drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_0", downsampling=True)
-        bottleneck_1_1 = self.encoder_bottleneck_regular(x=bottleneck_1_0,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_regular(x=network,
                     output_depth=64, drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_1")
-        bottleneck_1_2 = self.encoder_bottleneck_regular(x=bottleneck_1_1,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_regular(x=network,
                     output_depth=64, drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_2")
-        bottleneck_1_3 = self.encoder_bottleneck_regular(x=bottleneck_1_2,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_regular(x=network,
                     output_depth=64, drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_3")
-        bottleneck_1_4 = self.encoder_bottleneck_regular(x=bottleneck_1_3,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_regular(x=network,
                     output_depth=64, drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_4")
+        print network.get_shape().as_list()
 
-        bottleneck_2_0, pooling_indices_2 = self.encoder_bottleneck_regular(x=bottleneck_1_4,
+        network, pooling_indices_2 = self.encoder_bottleneck_regular(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_0", downsampling=True)
-        bottleneck_2_1 = self.encoder_bottleneck_regular(x=bottleneck_2_0,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_regular(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_1")
-        bottleneck_2_2 = self.encoder_bottleneck_dilated(x=bottleneck_2_1,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_dilated(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_2", dilation_rate=2)
-        bottleneck_2_3 = self.encoder_bottleneck_asymmetric(x=bottleneck_2_2,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_asymmetric(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_3")
-        bottleneck_2_4 = self.encoder_bottleneck_dilated(x=bottleneck_2_3,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_dilated(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_4", dilation_rate=4)
-        bottleneck_2_5 = self.encoder_bottleneck_regular(x=bottleneck_2_4,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_regular(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_5")
-        bottleneck_2_6 = self.encoder_bottleneck_dilated(x=bottleneck_2_5,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_dilated(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_6", dilation_rate=8)
-        bottleneck_2_7 = self.encoder_bottleneck_asymmetric(x=bottleneck_2_6,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_asymmetric(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_7")
-        bottleneck_2_8 = self.encoder_bottleneck_dilated(x=bottleneck_2_7,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_dilated(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_8", dilation_rate=16)
+        print network.get_shape().as_list()
 
-        bottleneck_3_1 = self.encoder_bottleneck_regular(x=bottleneck_2_8,
+        network = self.encoder_bottleneck_regular(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_1")
-        bottleneck_3_2 = self.encoder_bottleneck_dilated(x=bottleneck_3_1,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_dilated(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_2", dilation_rate=2)
-        bottleneck_3_3 = self.encoder_bottleneck_asymmetric(x=bottleneck_3_2,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_asymmetric(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_3")
-        bottleneck_3_4 = self.encoder_bottleneck_dilated(x=bottleneck_3_3,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_dilated(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_4", dilation_rate=4)
-        bottleneck_3_5 = self.encoder_bottleneck_regular(x=bottleneck_3_4,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_regular(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_5")
-        bottleneck_3_6 = self.encoder_bottleneck_dilated(x=bottleneck_3_5,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_dilated(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_6", dilation_rate=8)
-        bottleneck_3_7 = self.encoder_bottleneck_asymmetric(x=bottleneck_3_6,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_asymmetric(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_7")
-        bottleneck_3_8 = self.encoder_bottleneck_dilated(x=bottleneck_3_7,
+        print network.get_shape().as_list()
+        network = self.encoder_bottleneck_dilated(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_8", dilation_rate=16)
+        print network.get_shape().as_list()
 
         # decoder:
-        bottleneck_4_0 = self.decoder_bottleneck(x=bottleneck_3_8,
+        network = self.decoder_bottleneck(x=network,
                     output_depth=64, scope="bottleneck_4_0",
                     upsampling=True, pooling_indices=pooling_indices_2)
-        bottleneck_4_1 = self.decoder_bottleneck(x=bottleneck_4_0,
+        print network.get_shape().as_list()
+        network = self.decoder_bottleneck(x=network,
                     output_depth=64, scope="bottleneck_4_1")
-        bottleneck_4_2 = self.decoder_bottleneck(x=bottleneck_4_1,
+        print network.get_shape().as_list()
+        network = self.decoder_bottleneck(x=network,
                     output_depth=64, scope="bottleneck_4_2")
+        print network.get_shape().as_list()
 
-        bottleneck_5_0 = self.decoder_bottleneck(x=bottleneck_4_2,
+        network = self.decoder_bottleneck(x=network,
                     output_depth=16, scope="bottleneck_5_0",
                     upsampling=True, pooling_indices=pooling_indices_1)
-        bottleneck_5_1 = self.decoder_bottleneck(x=bottleneck_5_0,
+        print network.get_shape().as_list()
+        network = self.decoder_bottleneck(x=network,
                     output_depth=16, scope="bottleneck_5_1")
+        print network.get_shape().as_list()
 
         # fullconv:
-        fullconv = tf.contrib.slim.conv2d_transpose(bottleneck_5_1, self.no_of_classes,
+        network = tf.contrib.slim.conv2d_transpose(network, self.no_of_classes,
                     [2, 2], stride=2, scope="fullconv", padding="SAME", activation_fn=None)
+        print network.get_shape().as_list()
 
-        self.logits = fullconv
+        self.logits = network
 
     def add_loss_op(self):
         """
         - DOES: computes the weighted CE loss for the batch.
         """
 
-        weights = self.onehot_labels_ph*self.class_weights
-        weights = tf.reduce_sum(weights, 3)
-        # compute the weighted CE loss for each pixel in the batch:
-        loss_per_pixel = tf.losses.softmax_cross_entropy(onehot_labels=self.onehot_labels_ph,
-                    logits=self.logits, weights=weights)
+        # weights = self.onehot_labels_ph*self.class_weights
+        # weights = tf.reduce_sum(weights, 3)
+        # # compute the weighted CE loss for each pixel in the batch:
+        # loss_per_pixel = tf.losses.softmax_cross_entropy(onehot_labels=self.onehot_labels_ph,
+        #             logits=self.logits, weights=weights)
+        loss_per_pixel = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.onehot_labels_ph,
+                    logits=self.logits)
         # average the loss over all pixels to get the batch loss:
         self.loss = tf.reduce_mean(loss_per_pixel)
 
