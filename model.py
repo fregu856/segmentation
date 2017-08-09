@@ -19,7 +19,7 @@ class ENet_model(object):
         self.lr = 0.001
 
         #self.logs_dir = "/home/fregu856/segmentation/training_logs/"
-        self.logs_dir = "/mnt/data/fredrik_data/segmentation/training_logs/"
+        self.logs_dir = "/root/segmentation/training_logs/"
         self.no_of_classes = 20
         self.class_weights = np.ones((self.no_of_classes,)) # TODO!
         self.initial_lr = 5e-4 # TODO!

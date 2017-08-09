@@ -105,23 +105,23 @@ val_imgs_dir = cityscapes_dir + "leftImg8bit/val/"
 train_gt_dir = cityscapes_dir + "gtFine/train/"
 val_gt_dir = cityscapes_dir + "gtFine/val/"
 
-# train_dirs = ["jena/", "zurich/", "weimar/", "ulm/", "tubingen/", "stuttgart/",
-#             "strasbourg/", "monchengladbach/", "krefeld/", "hanover/",
-#             "hamburg/", "erfurt/", "dusselford/", "darmstadt/", "cologne/",
-#             "bremen/", "bochum/", "aachen/"]
-train_dirs = ["jena/"]
-# val_dirs = ["frankfurt/", "munster/", "lindau/"]
-val_dirs = ["frankfurt/"]
+train_dirs = ["jena/", "zurich/", "weimar/", "ulm/", "tubingen/", "stuttgart/",
+            "strasbourg/", "monchengladbach/", "krefeld/", "hanover/",
+            "hamburg/", "erfurt/", "dusseldorf/", "darmstadt/", "cologne/",
+            "bremen/", "bochum/", "aachen/"]
+#train_dirs = ["jena/"]
+val_dirs = ["frankfurt/", "munster/", "lindau/"]
+#val_dirs = ["frankfurt/"]
 
 train_img_paths = []
 train_trainId_label_paths = []
-for dir in train_dirs:
+for dir_step, dir in enumerate(train_dirs):
     img_dir = train_imgs_dir + dir
 
     file_names = os.listdir(img_dir)
 
     for step, file_name in enumerate(file_names):
-        print step
+        print "train dir %d, step %d" % (dir_step, step)
 
         img_path = img_dir + file_name
         img = cv2.imread(img_path, -1)
@@ -153,13 +153,13 @@ train_img_paths = cPickle.load(open(project_dir + "data/train_img_paths.pkl"))
 
 val_img_paths = []
 val_trainId_label_paths = []
-for dir in val_dirs:
+for dir_step, dir in enumerate(val_dirs):
     img_dir = val_imgs_dir + dir
 
     file_names = os.listdir(img_dir)
 
     for step, file_name in enumerate(file_names):
-        print step
+        print "val dir %d, step %d" % (dir_step, step)
 
         img_path = img_dir + file_name
         img = cv2.imread(img_path, -1)
