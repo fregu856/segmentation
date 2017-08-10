@@ -5,8 +5,8 @@ import numpy as np
 import tensorflow as tf
 from collections import namedtuple
 
-# project_dir = "/home/fregu856/segmentation/"
-# cityscapes_dir = "/home/fregu856/data/cityscapes/"
+#project_dir = "/home/fregu856/segmentation/"
+#cityscapes_dir = "/home/fregu856/data/cityscapes/"
 
 project_dir = "/root/segmentation/"
 cityscapes_dir = "/root/cityscapes/"
@@ -150,6 +150,32 @@ cPickle.dump(train_img_paths,
 
 train_trainId_label_paths = cPickle.load(open(project_dir + "data/train_trainId_label_paths.pkl"))
 train_img_paths = cPickle.load(open(project_dir + "data/train_img_paths.pkl"))
+
+trainId_to_count = {}
+for trainId in range(no_of_classes):
+    trainId_to_count[trainId] = 0
+
+for step, trainId_label_path in enumerate(train_trainId_label_paths):
+    print step
+
+    trainId_label = cv2.imread(trainId_label_path, -1)
+
+    for trainId in range(no_of_classes):
+        trainId_mask = np.equal(trainId_label, trainId)
+        label_trainId_count = np.sum(trainId_mask)
+
+        trainId_to_count[trainId] += label_trainId_count
+
+class_weights = []
+total_count = sum(trainId_to_count.values())
+for trainId, count in trainId_to_count.items():
+    trainId_prob = float(count)/float(total_count)
+    trainId_weight = 1/np.log(1.02 + trainId_prob)
+    class_weights.append(trainId_weight)
+
+print class_weights
+
+cPickle.dump(class_weights, open(project_dir + "data/class_weights.pkl", "w"))
 
 val_img_paths = []
 val_trainId_label_paths = []

@@ -1,6 +1,7 @@
 import numpy as np
 import tensorflow as tf
 import os
+import cPickle
 
 from utilities import PReLU, spatial_dropout, max_unpool
 
@@ -21,7 +22,7 @@ class ENet_model(object):
         #self.logs_dir = "/home/fregu856/segmentation/training_logs/"
         self.logs_dir = "/root/segmentation/training_logs/"
         self.no_of_classes = 20
-        self.class_weights = np.ones((self.no_of_classes,)) # TODO!
+        self.class_weights = cPickle.load(open("data/class_weights.pkl"))
         self.initial_lr = 5e-4 # TODO!
         self.decay_steps =  1000 # TODO!
         self.lr_decay_rate = 1e-1 # TODO!
@@ -59,12 +60,12 @@ class ENet_model(object):
         self.imgs_ph = tf.placeholder(tf.float32,
                     shape=[self.batch_size, self.img_height, self.img_width, 3], # ([batch_size, img_heigth, img_width, 3])
                     name="imgs_ph")
-        # self.onehot_labels_ph = tf.placeholder(tf.float32,
-        #             shape=[self.batch_size, self.img_height, self.img_width, self.no_of_classes], # ([batch_size, img_heigth, img_width, no_of_classes])
-        #             name="onehot_labels_ph")
-        self.onehot_labels_ph = tf.placeholder(tf.int32,
-                    shape=[self.batch_size, self.img_height, self.img_width], # ([batch_size, img_heigth, img_width, no_of_classes])
+        self.onehot_labels_ph = tf.placeholder(tf.float32,
+                    shape=[self.batch_size, self.img_height, self.img_width, self.no_of_classes], # ([batch_size, img_heigth, img_width, no_of_classes])
                     name="onehot_labels_ph")
+        # self.onehot_labels_ph = tf.placeholder(tf.int32,
+        #             shape=[self.batch_size, self.img_height, self.img_width], # ([batch_size, img_heigth, img_width, no_of_classes])
+        #             name="onehot_labels_ph")
         self.training_ph = tf.placeholder(tf.bool, name="training_ph")
         self.early_drop_prob_ph = tf.placeholder(tf.float32, name="early_drop_prob_ph")
         self.late_drop_prob_ph = tf.placeholder(tf.float32, name="late_drop_prob_ph")
@@ -197,13 +198,13 @@ class ENet_model(object):
         - DOES: computes the weighted CE loss for the batch.
         """
 
-        # weights = self.onehot_labels_ph*self.class_weights
-        # weights = tf.reduce_sum(weights, 3)
-        # # compute the weighted CE loss for each pixel in the batch:
-        # loss_per_pixel = tf.losses.softmax_cross_entropy(onehot_labels=self.onehot_labels_ph,
-        #             logits=self.logits, weights=weights)
-        loss_per_pixel = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.onehot_labels_ph,
-                    logits=self.logits)
+        weights = self.onehot_labels_ph*self.class_weights
+        weights = tf.reduce_sum(weights, 3)
+        # compute the weighted CE loss for each pixel in the batch:
+        loss_per_pixel = tf.losses.softmax_cross_entropy(onehot_labels=self.onehot_labels_ph,
+                    logits=self.logits, weights=weights)
+        # loss_per_pixel = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.onehot_labels_ph,
+        #             logits=self.logits)
         # average the loss over all pixels to get the batch loss:
         self.loss = tf.reduce_mean(loss_per_pixel)
 

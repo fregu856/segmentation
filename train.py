@@ -27,8 +27,10 @@ def evaluate_on_val(batch_size, sess):
     val_img_paths = cPickle.load(open(data_dir + "val_img_paths.pkl"))
 
     batch_imgs = np.zeros((batch_size, img_height, img_width, 3), dtype=np.float32)
-    #batch_onehot_labels = np.zeros((batch_size, img_height, img_width, no_of_classes), dtype=np.float32)
-    batch_onehot_labels = np.zeros((batch_size, img_height, img_width), dtype=np.int32)
+    batch_onehot_labels = np.zeros((batch_size, img_height, img_width, no_of_classes), dtype=np.float32)
+    #batch_onehot_labels = np.zeros((batch_size, img_height, img_width), dtype=np.int32)
+    layer_idx = np.arange(img_height).reshape(img_height, 1)
+    component_idx = np.tile(np.arange(img_width), (img_height, 1))
     for i in range(batch_size):
         # read the next img:
         img = cv2.imread(val_img_paths[i], -1)
@@ -38,8 +40,10 @@ def evaluate_on_val(batch_size, sess):
         trainId_label = cv2.imread(val_trainId_label_paths[i], -1)
         # onehot_label = tf.one_hot(indices=trainId_label, depth=no_of_classes)
         # onehot_label = sess.run(onehot_label) # (convert to numpy array)
-        # batch_onehot_labels[i] = onehot_label
-        batch_onehot_labels[i] = trainId_label
+        onehot_label = np.zeros((img_height, img_width, no_of_classes), dtype=np.float32)
+        onehot_label[layer_idx, component_idx, trainId_label] = 1
+        batch_onehot_labels[i] = onehot_label
+        #batch_onehot_labels[i] = trainId_label
 
     batch_feed_dict = model.create_feed_dict(batch_imgs, early_drop_prob=0.0,
                 late_drop_prob=0.0, training=False, onehot_labels_batch=batch_onehot_labels)
@@ -71,11 +75,13 @@ def train_data_iterator(batch_size, session):
     no_of_batches = int(no_of_train_imgs/batch_size)
 
     batch_pointer = 0
-    for step in range(no_of_batches):
+    for step in range(no_of_batche):
         # get and yield the next batch_size imgs and onehot labels from the training data:
         batch_imgs = np.zeros((batch_size, img_height, img_width, 3), dtype=np.float32)
-        #batch_onehot_labels = np.zeros((batch_size, img_height, img_width, no_of_classes), dtype=np.float32)
-        batch_onehot_labels = np.zeros((batch_size, img_height, img_width), dtype=np.int32)
+        batch_onehot_labels = np.zeros((batch_size, img_height, img_width, no_of_classes), dtype=np.float32)
+        #batch_onehot_labels = np.zeros((batch_size, img_height, img_width), dtype=np.int32)
+        layer_idx = np.arange(img_height).reshape(img_height, 1)
+        component_idx = np.tile(np.arange(img_width), (img_height, 1))
         for i in range(batch_size):
             # read the next img:
             img = cv2.imread(train_img_paths[(batch_pointer + i)], -1)
@@ -84,8 +90,10 @@ def train_data_iterator(batch_size, session):
             trainId_label = cv2.imread(train_trainId_label_paths[(batch_pointer + i)], -1)
             # onehot_label = tf.one_hot(indices=trainId_label, depth=no_of_classes)
             # onehot_label = sess.run(onehot_label) # (convert to numpy array)
-            # batch_onehot_labels[i] = onehot_label
-            batch_onehot_labels[i] = trainId_label
+            onehot_label = np.zeros((img_height, img_width, no_of_classes), dtype=np.float32)
+            onehot_label[layer_idx, component_idx, trainId_label] = 1
+            batch_onehot_labels[i] = onehot_label
+            #batch_onehot_labels[i] = trainId_label
         batch_pointer += batch_size
 
         yield (batch_imgs, batch_onehot_labels)
@@ -108,9 +116,7 @@ val_loss_per_epoch = []
 # makes sense to save a model checkpoint):
 best_epoch_losses = [1000, 1000, 1000, 1000, 1000]
 
-config = tf.ConfigProto()
-config.gpu_options.allow_growth = True
-with tf.Session(config = config) as sess:
+with tf.Session() as sess:
     # initialize all variables/parameters:
     init = tf.global_variables_initializer()
     sess.run(init)
