@@ -17,15 +17,17 @@ class ENet_model(object):
 
         self.model_id = model_id
 
-        self.lr = 0.001
-
         #self.logs_dir = "/home/fregu856/segmentation/training_logs/"
         self.logs_dir = "/root/segmentation/training_logs/"
-        self.no_of_classes = 20
+        self.no_of_classes = 2
         self.class_weights = cPickle.load(open("data/class_weights.pkl"))
-        self.initial_lr = 5e-4 # TODO!
-        self.decay_steps =  1000 # TODO!
-        self.lr_decay_rate = 1e-1 # TODO!
+
+        print self.class_weights
+
+        self.initial_lr = 1e-5 # (am I even using this?)
+        print self.initial_lr
+        self.decay_steps =  3000 # (am I even using this?)
+        self.lr_decay_rate = 0.96 # (am I even using this?)
         self.img_height = 256
         self.img_width = 512
         self.batch_size = 16
@@ -63,6 +65,8 @@ class ENet_model(object):
         self.onehot_labels_ph = tf.placeholder(tf.float32,
                     shape=[self.batch_size, self.img_height, self.img_width, self.no_of_classes], # ([batch_size, img_heigth, img_width, no_of_classes])
                     name="onehot_labels_ph")
+        self.pretrain_labels_ph = tf.placeholder(tf.int32,
+                    shape=[self.batch_size], name="pretrain_labels_ph")
         # self.onehot_labels_ph = tf.placeholder(tf.int32,
         #             shape=[self.batch_size, self.img_height, self.img_width], # ([batch_size, img_heigth, img_width, no_of_classes])
         #             name="onehot_labels_ph")
@@ -70,21 +74,23 @@ class ENet_model(object):
         self.early_drop_prob_ph = tf.placeholder(tf.float32, name="early_drop_prob_ph")
         self.late_drop_prob_ph = tf.placeholder(tf.float32, name="late_drop_prob_ph")
 
-    def create_feed_dict(self, imgs_batch, early_drop_prob, late_drop_prob, training, onehot_labels_batch=None):
+    def create_feed_dict(self, imgs_batch, early_drop_prob, late_drop_prob, training, onehot_labels_batch=None, pretrain_labels_batch=None):
         """
         - DOES: returns a feed_dict mapping the placeholders to the actual
         input data (this is how we run the network on specific data).
         """
 
         feed_dict = {}
-        feed_dict[self.imgs_ph] = imgs_batch
         feed_dict[self.training_ph] = training
         feed_dict[self.early_drop_prob_ph] = early_drop_prob
         feed_dict[self.late_drop_prob_ph] = late_drop_prob
+        feed_dict[self.imgs_ph] = imgs_batch
         if onehot_labels_batch is not None:
             # only add the labels data if it's specified (during inference, we
             # won't have any labels):
             feed_dict[self.onehot_labels_ph] = onehot_labels_batch
+        if pretrain_labes_batch is not None:
+            feed_dict[self.pretrain_labels_ph] = pretrain_labels_batch
 
         return feed_dict
 
@@ -166,6 +172,23 @@ class ENet_model(object):
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_8", dilation_rate=16)
         print network.get_shape().as_list()
 
+
+
+
+
+        encoder_output_flat = tf.reshape(network, [-1, 256000])
+        W_pretrain_logits = tf.get_variable("W_pretrain_logits",
+                    shape=[256000, self.no_of_classes],
+                    initializer=tf.contrib.layers.xavier_initializer())
+        b_pretrain_logits = tf.get_variable("b_pretrain_logits",
+                    shape=[self.no_of_classes],
+                    initializer=tf.constant_initializer(0))
+        self.pretrain_logits = tf.matmul(encoder_output_flat, W_pretrain_logits) + b_pretrain_logits
+
+
+
+
+
         # decoder:
         network = self.decoder_bottleneck(x=network,
                     output_depth=64, scope="bottleneck_4_0",
@@ -208,17 +231,34 @@ class ENet_model(object):
         # average the loss over all pixels to get the batch loss:
         self.loss = tf.reduce_mean(loss_per_pixel)
 
+
+
+
+
+        # define the loss (cross entropy):
+        pretrain_loss_per_img = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                    logits=self.pretrain_logits, labels=self.pretrain_labels_ph)
+        # # average the loss over all imgs to get the batch loss:
+        self.pretrain_loss = tf.reduce_mean(pretrain_loss_per_img)
+
     def add_train_op(self):
         """
         - DOES: creates a training operator for minimization of the loss.
         """
-
+        # optimizer = tf.train.AdamOptimizer(5e-4)
+        # self.train_op = optimizer.minimize(self.loss)
         global_step = tf.Variable(0, trainable=False)
         lr = tf.train.exponential_decay(learning_rate=self.initial_lr,
                     global_step=global_step, decay_steps=self.decay_steps,
                     decay_rate=self.lr_decay_rate, staircase=True)
         optimizer = tf.train.AdamOptimizer(learning_rate=lr)
         self.train_op = optimizer.minimize(self.loss, global_step=global_step) # (global_step will now automatically be incremented)
+
+
+
+
+        pretrain_optimizer = tf.train.AdamOptimizer(5e-4)
+        self.pretrain_train_op = pretrain_optimizer.minimize(self.pretrain_loss)
 
     def initial_block(self, x, scope):
         # convolution branch:
