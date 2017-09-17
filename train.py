@@ -4,20 +4,20 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from tensorflow.core.protobuf import saver_pb2
 import cv2
 
 from model import ENet_model
 
 #project_dir = "/home/fregu856/segmentation/"
 project_dir = "/root/segmentation/"
+
 data_dir = project_dir + "data/"
 
-img_height = 256
-img_width = 512
+img_height = 512
+img_width = 1024
 no_of_classes = 2
 
-train_mean_img = cPickle.load(open("data/mean_img.pkl"))
+train_mean_channels = cPickle.load(open("data/mean_channels.pkl"))
 print train_mean_img
 
 def evaluate_on_val(batch_size, sess):
@@ -45,7 +45,7 @@ def evaluate_on_val(batch_size, sess):
             # read the next img:
             img = cv2.imread(val_img_paths[batch_pointer + i], -1)
             cv2.imwrite("img_" + str(i) + ".png", img)
-            img = img - train_mean_img
+            img = img - train_mean_channels
             batch_imgs[i] = img
 
             trainId_label = cv2.imread(val_trainId_label_paths[batch_pointer + i], -1)
@@ -99,7 +99,7 @@ def train_data_iterator(batch_size, session):
         for i in range(batch_size):
             # read the next img:
             img = cv2.imread(train_img_paths[batch_pointer + i], -1)
-            img = img - train_mean_img
+            img = img - train_mean_channels
             batch_imgs[i] = img
 
             trainId_label = cv2.imread(train_trainId_label_paths[batch_pointer + i], -1)

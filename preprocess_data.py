@@ -117,24 +117,17 @@ val_dirs = ["frankfurt/", "munster/", "lindau/"]
 # train_dirs = ["jena/"]
 # val_dirs = ["frankfurt/"]
 
-no_of_roads = 0
-
 pretrain_train_img_paths = []
 pretrain_train_labels = []
 train_img_paths = []
 train_trainId_label_paths = []
 for dir_step, dir in enumerate(train_dirs):
-    if no_of_roads > 1000:
-        break
-
     img_dir = train_imgs_dir + dir
 
     file_names = os.listdir(img_dir)
     for step, file_name in enumerate(file_names):
-        print "train dir %d, step %d" % (dir_step, step)
-
-        if no_of_roads > 1000:
-            break
+        if step % 10 == 0:
+            print "train dir %d/%d, step %d/%d" % (dir_step, len(train_dirs)-1, step, len(file_names)-1)
 
         img_path = img_dir + file_name
         img = cv2.imread(img_path, -1)
@@ -192,10 +185,10 @@ for dir_step, dir in enumerate(train_dirs):
                         pretrain_train_img_paths.append(img_crop_path)
                         pretrain_train_labels.append(trainId)
                         break
-        no_of_nonroads = pretrain_train_labels.count(nonroad_label)
-        no_of_roads = len(pretrain_train_labels) - no_of_nonroads
-        print "number of nonroads: %d" % no_of_nonroads
-        print "number of roads: %d" % no_of_roads
+    no_of_nonroads = pretrain_train_labels.count(nonroad_label)
+    no_of_roads = len(pretrain_train_labels) - no_of_nonroads
+    print "number of nonroads: %d" % no_of_nonroads
+    print "number of roads: %d" % no_of_roads
 
 no_of_nonroads = pretrain_train_labels.count(nonroad_label)
 no_of_roads = len(pretrain_train_labels) - no_of_nonroads
@@ -238,10 +231,11 @@ pretrain_train_img_paths, pretrain_train_labels = zip(*pretrain_train_data)
 cPickle.dump(pretrain_train_img_paths,
             open(project_dir + "data/pretrain_train_img_paths.pkl", "w"))
 cPickle.dump(pretrain_train_labels,
-            open(project_dir + "data/pretrain_train_labels", "w"))
+            open(project_dir + "data/pretrain_train_labels.pkl", "w"))
 print "number of pretrain_train imgs: %d" % len(pretrain_train_labels)
 
 # compute the mean pixel channels of the pretrain_train imgs:
+print "computing mean pixel channels of the pretrain_train imgs"
 no_of_pretrain_train_imgs = len(pretrain_train_img_paths)
 pretrain_mean_channels = np.zeros((3, ))
 for step, img_path in enumerate(pretrain_train_img_paths):
@@ -279,6 +273,7 @@ train_trainId_label_paths = cPickle.load(open(project_dir + "data/train_trainId_
 train_img_paths = cPickle.load(open(project_dir + "data/train_img_paths.pkl"))
 
 # compute the mean pixel channels of the train imgs:
+print "computing mean pixel channels of the train imgs"
 no_of_train_imgs = len(train_img_paths)
 mean_channels = np.zeros((3, ))
 for step, img_path in enumerate(train_img_paths):
@@ -305,6 +300,7 @@ cPickle.dump(mean_channels, open(project_dir + "data/mean_channels.pkl", "w"))
 
 
 # compute the class weights:
+print "computing class weights"
 trainId_to_count = {}
 for trainId in range(no_of_classes):
     trainId_to_count[trainId] = 0
@@ -350,7 +346,8 @@ for dir_step, dir in enumerate(val_dirs):
     file_names = os.listdir(img_dir)
 
     for step, file_name in enumerate(file_names):
-        print "val dir %d, step %d" % (dir_step, step)
+        if step % 10 == 0:
+            print "val dir %d/%d, step %d/%d" % (dir_step, len(val_dirs)-1, step, len(file_names)-1)
 
         img_path = img_dir + file_name
         img = cv2.imread(img_path, -1)
@@ -403,16 +400,19 @@ random.shuffle(pretrain_val_data)
 random.shuffle(pretrain_val_data)
 
 # balance the pretrain_val data:
+max_no_of_roads = min(2000, no_of_roads)
 pretrain_val_img_paths_balanced = []
 pretrain_val_labels_balanced = []
 for (img_path, label) in pretrain_val_data:
-    if label == road_label:
-        pretrain_val_labels_balanced.append(label)
-        pretrain_val_img_paths_balanced.append(img_path)
+    no_of_roads = pretrain_val_labels_balanced.count(road_label)
+    no_of_nonroads = pretrain_val_labels_balanced.count(nonroad_label)
 
+    if label == road_label:
+        if no_of_roads < max_no_of_roads:
+            pretrain_val_labels_balanced.append(label)
+            pretrain_val_img_paths_balanced.append(img_path)
     else:
-        no_of_nonroads = pretrain_val_labels_balanced.count(nonroad_label)
-        if no_of_nonroads < no_of_roads:
+        if no_of_nonroads < max_no_of_roads:
             pretrain_val_labels_balanced.append(label)
             pretrain_val_img_paths_balanced.append(img_path)
 
@@ -432,7 +432,7 @@ pretrain_val_img_paths, pretrain_val_labels = zip(*pretrain_val_data)
 cPickle.dump(pretrain_val_img_paths,
             open(project_dir + "data/pretrain_val_img_paths.pkl", "w"))
 cPickle.dump(pretrain_val_labels,
-            open(project_dir + "data/pretrain_val_labels", "w"))
+            open(project_dir + "data/pretrain_val_labels.pkl", "w"))
 print "number of pretrain_val imgs: %d" % len(pretrain_val_labels)
 
 

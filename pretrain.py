@@ -4,42 +4,62 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import tensorflow as tf
-from tensorflow.core.protobuf import saver_pb2
 import cv2
+import random
 
 from model import ENet_model
 
 #project_dir = "/home/fregu856/segmentation/"
 project_dir = "/root/segmentation/"
+
 data_dir = project_dir + "data/"
 
+model_id = "pretrain_1" # (change this to not overwrite all log data when you train the model)
+batch_size = 64
 img_height = 128
 img_width = 256
-no_of_classes = 2
+
+model = ENet_model(model_id, img_height=img_height, img_width=img_width, batch_size=batch_size)
+
+train_mean_channels = cPickle.load(open("data/pretrain_mean_channels.pkl"))
+
+# load the training data from disk:
+train_img_paths = cPickle.load(open(data_dir + "pretrain_train_img_paths.pkl"))
+train_labels = cPickle.load(open(data_dir + "pretrain_train_labels.pkl"))
+train_data = zip(train_img_paths, train_labels)
+
+# compute the number of batches needed to iterate through the training data:
+no_of_train_imgs = len(train_img_paths)
+no_of_batches = int(no_of_train_imgs/batch_size)
+
+# load the validation data from disk:
+val_img_paths = cPickle.load(open(data_dir + "pretrain_val_img_paths.pkl"))
+val_labels = cPickle.load(open(data_dir + "pretrain_val_labels.pkl"))
+val_data = zip(val_img_paths, val_labels)
+
+# compute the number of batches needed to iterate through the val data:
+no_of_val_imgs = len(val_img_paths)
+no_of_val_batches = int(no_of_val_imgs/batch_size)
 
 def evaluate_on_val(batch_size, sess):
     """
     - DOES:
     """
 
-    # load the val data from disk:
-    val_labels = cPickle.load(open(data_dir + "pretrain_val_labels.pkl"))
-    val_img_paths = cPickle.load(open(data_dir + "pretrain_val_img_paths.pkl"))
+    print "evaluation on val:"
 
-    no_of_val_imgs = len(val_img_paths)
-    no_of_val_batches = int(no_of_val_imgs/batch_size)
+    random.shuffle(val_data)
+    val_img_paths, val_labels = zip(*val_data)
 
     val_batch_losses = []
     batch_pointer = 0
     for step in range(no_of_val_batches):
-        print step
         batch_imgs = np.zeros((batch_size, img_height, img_width, 3), dtype=np.float32)
         batch_labels = []
         for i in range(batch_size):
             # read the next img:
             img = cv2.imread(val_img_paths[batch_pointer + i], -1)
-            cv2.imwrite("img_" + str(i) + ".png", img)
-            img = img
+            img = img - train_mean_channels
             batch_imgs[i] = img
 
             batch_labels.append(val_labels[(batch_pointer + i)])
@@ -51,11 +71,13 @@ def evaluate_on_val(batch_size, sess):
         batch_loss, logits = sess.run([model.pretrain_loss, model.pretrain_logits],
                     feed_dict=batch_feed_dict)
         val_batch_losses.append(batch_loss)
-        print batch_loss
+        print "epoch: %d/%d, val step: %d/%d, val batch loss: %g" % (epoch+1, no_of_epochs, step+1, no_of_val_batches, batch_loss)
 
-        predictions = np.argmax(logits, axis=3)
-
-        print predictions
+        predictions = np.argmax(logits, axis=1)
+        no_of_roads = np.count_nonzero(predictions == 0)
+        no_of_nonroads = np.count_nonzero(predictions == 1)
+        print ("predictions on val: roads: %d/%d, nonroads: %d/%d" % (no_of_roads,
+                    batch_size, no_of_nonroads, batch_size))
 
     val_loss = np.mean(val_batch_losses)
     return val_loss
@@ -65,24 +87,18 @@ def train_data_iterator(batch_size, session):
     - DOES:
     """
 
-    # load the training data from disk:
-    train_labels = cPickle.load(open(data_dir + "pretrain_train_label.pkl"))
-    train_img_paths = cPickle.load(open(data_dir + "pretrain_train_img_paths.pkl"))
-
-    # compute the number of batches needed to iterate through the training data:
-    global no_of_batches
-    no_of_train_imgs = len(train_img_paths)
-    no_of_batches = int(no_of_train_imgs/batch_size)
+    random.shuffle(train_data)
+    train_img_paths, train_labels = zip(*train_data)
 
     batch_pointer = 0
     for step in range(no_of_batches):
-        # get and yield the next batch_size imgs and onehot labels from the training data:
+        # get and yield the next batch_size imgs and labels from the training data:
         batch_imgs = np.zeros((batch_size, img_height, img_width, 3), dtype=np.float32)
         batch_labels = []
         for i in range(batch_size):
             # read the next img:
             img = cv2.imread(train_img_paths[batch_pointer + i], -1)
-            img = img - train_mean_img
+            img = img - train_mean_channels
             batch_imgs[i] = img
 
             batch_labels.append(train_labels[(batch_pointer + i)])
@@ -91,11 +107,6 @@ def train_data_iterator(batch_size, session):
         yield (batch_imgs, batch_labels)
 
 no_of_epochs = 120
-model_id = "road_non_road_1" # (change this to not overwrite all log data when you train the model)
-
-model = ENet_model(model_id)
-
-batch_size = model.batch_size
 
 # create a saver for saving all model variables/parameters:
 saver = tf.train.Saver(write_version=tf.train.SaverDef.V2)
@@ -113,6 +124,8 @@ with tf.Session() as sess:
     init = tf.global_variables_initializer()
     sess.run(init)
 
+    #saver.restore(sess, "/home/fregu856/2D_detection/training_logs/model_1/checkpoints/model_1_epoch_1.ckpt")
+
     for epoch in range(no_of_epochs):
         print "###########################"
         print "######## NEW EPOCH ########"
@@ -127,7 +140,7 @@ with tf.Session() as sess:
                         late_drop_prob=0.1, training=True, pretrain_labels_batch=labels)
 
             # compute the batch loss and compute & apply all gradients w.r.t to
-            # the batch loss (without model.train_op in the call, the network
+            # the batch loss (without model.pretrain_train_op in the call, the network
             # would NOT train, we would only compute the batch loss):
             batch_loss, _ = sess.run([model.pretrain_loss, model.pretrain_train_op],
                         feed_dict=batch_feed_dict)
