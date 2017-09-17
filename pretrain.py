@@ -41,19 +41,21 @@ val_data = zip(val_img_paths, val_labels)
 no_of_val_imgs = len(val_img_paths)
 no_of_val_batches = int(no_of_val_imgs/batch_size)
 
-def evaluate_on_val(batch_size, sess):
+def evaluate_on_val():
     """
     - DOES:
     """
-
-    print "evaluation on val:"
 
     random.shuffle(val_data)
     val_img_paths, val_labels = zip(*val_data)
 
     val_batch_losses = []
+    val_batch_accuracies = []
     batch_pointer = 0
     for step in range(no_of_val_batches):
+        print ("epoch: %d/%d, val step: %d/%d" % (epoch+1, no_of_epochs, step+1,
+                    no_of_val_batches))
+
         batch_imgs = np.zeros((batch_size, img_height, img_width, 3), dtype=np.float32)
         batch_labels = []
         for i in range(batch_size):
@@ -66,23 +68,35 @@ def evaluate_on_val(batch_size, sess):
         batch_pointer += batch_size
 
         batch_feed_dict = model.create_feed_dict(batch_imgs, early_drop_prob=0.0,
-                    late_drop_prob=0.0, training=False, pretrain_labels_batch=batch_labels)
+                    late_drop_prob=0.0, pretrain_labels_batch=batch_labels)
 
         batch_loss, logits = sess.run([model.pretrain_loss, model.pretrain_logits],
                     feed_dict=batch_feed_dict)
         val_batch_losses.append(batch_loss)
-        print "epoch: %d/%d, val step: %d/%d, val batch loss: %g" % (epoch+1, no_of_epochs, step+1, no_of_val_batches, batch_loss)
+        print "        val batch loss: %g" % batch_loss
 
         predictions = np.argmax(logits, axis=1)
+
         no_of_roads = np.count_nonzero(predictions == 0)
         no_of_nonroads = np.count_nonzero(predictions == 1)
-        print ("predictions on val: roads: %d/%d, nonroads: %d/%d" % (no_of_roads,
-                    batch_size, no_of_nonroads, batch_size))
+        print ("        predictions on val: roads: %d/%d, nonroads: %d/%d"
+                    % (no_of_roads, batch_size, no_of_nonroads, batch_size))
+
+        predictions = list(predictions)
+        no_of_correct = 0
+        for prediction, label in zip(predictions, batch_labels):
+            if prediction == label:
+                no_of_correct += 1
+        batch_accuracy = float(no_of_correct)/float(batch_size)
+        val_batch_accuracies.append(batch_accuracy)
+        print "        val batch accuracy: %g" % batch_accuracy
 
     val_loss = np.mean(val_batch_losses)
-    return val_loss
+    val_accuracy = np.mean(val_batch_accuracies)
 
-def train_data_iterator(batch_size, session):
+    return val_loss, val_accuracy
+
+def train_data_iterator():
     """
     - DOES:
     """
@@ -101,23 +115,26 @@ def train_data_iterator(batch_size, session):
             img = img - train_mean_channels
             batch_imgs[i] = img
 
+            # get the next label:
             batch_labels.append(train_labels[(batch_pointer + i)])
         batch_pointer += batch_size
 
         yield (batch_imgs, batch_labels)
 
-no_of_epochs = 120
+no_of_epochs = 100
 
 # create a saver for saving all model variables/parameters:
 saver = tf.train.Saver(write_version=tf.train.SaverDef.V2)
 
 # initialize all log data containers:
 train_loss_per_epoch = []
+train_accuracy_per_epoch = []
 val_loss_per_epoch = []
+val_accuracy_per_epoch = []
 
 # initialize a list containing the 5 best val losses (is used to tell when it
 # makes sense to save a model checkpoint):
-best_epoch_losses = [1000, 1000, 1000, 1000, 1000]
+best_epoch_losses = [10000, 10000, 10000, 10000, 10000]
 
 with tf.Session() as sess:
     # initialize all variables/parameters:
@@ -130,23 +147,41 @@ with tf.Session() as sess:
         print "###########################"
         print "######## NEW EPOCH ########"
         print "###########################"
-        print "epoch: %d/%d" % (epoch+1, no_of_epochs)
 
         # run an epoch and get all batch losses:
         batch_losses = []
-        for step, (imgs, labels) in enumerate(train_data_iterator(batch_size, sess)):
+        batch_accuracies = []
+        for step, (imgs, labels) in enumerate(train_data_iterator()):
+            print ("epoch: %d/%d, train step: %d/%d" % (epoch+1, no_of_epochs, step+1,
+                        no_of_batches))
+
             # create a feed dict containing the batch data:
             batch_feed_dict = model.create_feed_dict(imgs, early_drop_prob=0.01,
-                        late_drop_prob=0.1, training=True, pretrain_labels_batch=labels)
+                        late_drop_prob=0.1, pretrain_labels_batch=labels)
 
             # compute the batch loss and compute & apply all gradients w.r.t to
             # the batch loss (without model.pretrain_train_op in the call, the network
             # would NOT train, we would only compute the batch loss):
-            batch_loss, _ = sess.run([model.pretrain_loss, model.pretrain_train_op],
-                        feed_dict=batch_feed_dict)
-            batch_losses.append(batch_loss)
+            batch_loss, logits, _ = sess.run([model.pretrain_loss, model.pretrain_logits,
+                        model.pretrain_train_op], feed_dict=batch_feed_dict)
 
-            print "step: %d/%d, training batch loss: %g" % (step+1, no_of_batches, batch_loss)
+            batch_losses.append(batch_loss)
+            print "        train batch loss: %g" % batch_loss
+
+            predictions = np.argmax(logits, axis=1)
+            no_of_roads = np.count_nonzero(predictions == 0)
+            no_of_nonroads = np.count_nonzero(predictions == 1)
+            print ("        predictions on train: roads: %d/%d, nonroads: %d/%d"
+                        % (no_of_roads, batch_size, no_of_nonroads, batch_size))
+
+            predictions = list(predictions)
+            no_of_correct = 0
+            for prediction, label in zip(predictions, labels):
+                if prediction == label:
+                    no_of_correct += 1
+            batch_accuracy = float(no_of_correct)/float(batch_size)
+            batch_accuracies.append(batch_accuracy)
+            print "        train batch accuracy: %g" % batch_accuracy
 
         # compute the train epoch loss:
         train_epoch_loss = np.mean(batch_losses)
@@ -157,14 +192,31 @@ with tf.Session() as sess:
                     % model.model_dir, "w"))
         print "training loss: %g" % train_epoch_loss
 
+        # compute the train epoch accuracy:
+        train_epoch_accuracy = np.mean(batch_accuracies)
+        # save the train epoch accuracy:
+        train_accuracy_per_epoch.append(train_epoch_accuracy)
+        # save the train epoch accuracies to disk:
+        cPickle.dump(train_accuracy_per_epoch, open("%strain_accuracy_per_epoch.pkl"
+                    % model.model_dir, "w"))
+        print "training accuracy: %g" % train_epoch_accuracy
+
         # run the model on the validation data:
-        val_loss = evaluate_on_val(batch_size, sess)
+        val_loss, val_accuracy = evaluate_on_val()
+
         # save the val epoch loss:
         val_loss_per_epoch.append(val_loss)
         # save the val epoch losses to disk:
         cPickle.dump(val_loss_per_epoch, open("%sval_loss_per_epoch.pkl"\
                     % model.model_dir, "w"))
-        print "validaion loss: %g" % val_loss
+        print "validation loss: %g" % val_loss
+
+        # save the val epoch accuracy:
+        val_accuracy_per_epoch.append(val_accuracy)
+        # save the val epoch accuracies to disk:
+        cPickle.dump(val_accuracy_per_epoch, open("%sval_accuracy_per_epoch.pkl"\
+                    % model.model_dir, "w"))
+        print "validation accuracy: %g" % val_accuracy
 
         if val_loss < max(best_epoch_losses): # (if top 5 performance on val:)
             # save the model weights to disk:
@@ -187,6 +239,16 @@ with tf.Session() as sess:
         plt.savefig("%strain_loss_per_epoch.png" % model.model_dir)
         plt.close(1)
 
+        # plot the training accuracy vs epoch and save to disk:
+        plt.figure(1)
+        plt.plot(train_accuracy_per_epoch, "k^")
+        plt.plot(train_accuracy_per_epoch, "k")
+        plt.ylabel("loss")
+        plt.xlabel("epoch")
+        plt.title("training accuracy per epoch")
+        plt.savefig("%strain_accuracy_per_epoch.png" % model.model_dir)
+        plt.close(1)
+
         # plot the val loss vs epoch and save to disk:
         plt.figure(1)
         plt.plot(val_loss_per_epoch, "k^")
@@ -195,4 +257,14 @@ with tf.Session() as sess:
         plt.xlabel("epoch")
         plt.title("validation loss per epoch")
         plt.savefig("%sval_loss_per_epoch.png" % model.model_dir)
+        plt.close(1)
+
+        # plot the val accuracy vs epoch and save to disk:
+        plt.figure(1)
+        plt.plot(val_accuracy_per_epoch, "k^")
+        plt.plot(val_accuracy_per_epoch, "k")
+        plt.ylabel("loss")
+        plt.xlabel("epoch")
+        plt.title("validation accuracy per epoch")
+        plt.savefig("%sval_accuracy_per_epoch.png" % model.model_dir)
         plt.close(1)

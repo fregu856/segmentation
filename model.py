@@ -20,6 +20,9 @@ class ENet_model(object):
         #self.logs_dir = "/home/fregu856/segmentation/training_logs/"
         self.logs_dir = "/root/segmentation/training_logs/"
 
+        if not os.path.exists(self.logs_dir):
+            os.makedirs(self.logs_dir)
+
         self.no_of_classes = 2
         self.class_weights = cPickle.load(open("data/class_weights.pkl"))
 
@@ -29,6 +32,8 @@ class ENet_model(object):
         self.img_height = img_height
         self.img_width = img_width
         self.batch_size = batch_size
+
+        self.wd = 2e-4 # (weight decay)
 
         #
         self.create_model_dirs()
@@ -48,9 +53,11 @@ class ENet_model(object):
 
         self.model_dir = self.logs_dir + "model_%s" % self.model_id + "/"
         self.checkpoints_dir = self.model_dir + "checkpoints/"
+        self.debug_imgs_dir = self.model_dir + "imgs/"
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
             os.makedirs(self.checkpoints_dir)
+            os.makedirs(self.debug_imgs_dir)
 
     def add_placeholders(self):
         """
@@ -60,26 +67,25 @@ class ENet_model(object):
         self.imgs_ph = tf.placeholder(tf.float32,
                     shape=[self.batch_size, self.img_height, self.img_width, 3], # ([batch_size, img_heigth, img_width, 3])
                     name="imgs_ph")
+
         self.onehot_labels_ph = tf.placeholder(tf.float32,
                     shape=[self.batch_size, self.img_height, self.img_width, self.no_of_classes], # ([batch_size, img_heigth, img_width, no_of_classes])
                     name="onehot_labels_ph")
+
         self.pretrain_labels_ph = tf.placeholder(tf.int32,
                     shape=[self.batch_size], name="pretrain_labels_ph")
-        # self.onehot_labels_ph = tf.placeholder(tf.int32,
-        #             shape=[self.batch_size, self.img_height, self.img_width], # ([batch_size, img_heigth, img_width, no_of_classes])
-        #             name="onehot_labels_ph")
-        self.training_ph = tf.placeholder(tf.bool, name="training_ph")
+
         self.early_drop_prob_ph = tf.placeholder(tf.float32, name="early_drop_prob_ph")
+
         self.late_drop_prob_ph = tf.placeholder(tf.float32, name="late_drop_prob_ph")
 
-    def create_feed_dict(self, imgs_batch, early_drop_prob, late_drop_prob, training, onehot_labels_batch=None, pretrain_labels_batch=None):
+    def create_feed_dict(self, imgs_batch, early_drop_prob, late_drop_prob, onehot_labels_batch=None, pretrain_labels_batch=None):
         """
         - DOES: returns a feed_dict mapping the placeholders to the actual
         input data (this is how we run the network on specific data).
         """
 
         feed_dict = {}
-        feed_dict[self.training_ph] = training
         feed_dict[self.early_drop_prob_ph] = early_drop_prob
         feed_dict[self.late_drop_prob_ph] = late_drop_prob
         feed_dict[self.imgs_ph] = imgs_batch
@@ -178,12 +184,14 @@ class ENet_model(object):
         # pretrain classification:
         pretrain_avg_pool = tf.reduce_mean(network, [1,2])
         print pretrain_avg_pool.get_shape().as_list()
-        W_pretrain_logits = tf.get_variable("W_pretrain_logits",
+        W_pretrain_logits = self.get_variable_weight_decay("W_pretrain_logits",
                     shape=[128, self.no_of_classes],
-                    initializer=tf.contrib.layers.xavier_initializer())
-        b_pretrain_logits = tf.get_variable("b_pretrain_logits",
+                    initializer=tf.contrib.layers.xavier_initializer(),
+                    loss_category="pretrain_wd_losses")
+        b_pretrain_logits = self.get_variable_weight_decay("b_pretrain_logits",
                     shape=[self.no_of_classes],
-                    initializer=tf.constant_initializer(0))
+                    initializer=tf.constant_initializer(0),
+                    loss_category="pretrain_wd_losses")
         self.pretrain_logits = tf.matmul(pretrain_avg_pool, W_pretrain_logits) + b_pretrain_logits
         print self.pretrain_logits.get_shape().as_list()
 
@@ -230,10 +238,11 @@ class ENet_model(object):
         # compute the weighted CE loss for each pixel in the batch:
         loss_per_pixel = tf.losses.softmax_cross_entropy(onehot_labels=self.onehot_labels_ph,
                     logits=self.logits, weights=weights)
-        # loss_per_pixel = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.onehot_labels_ph,
-        #             logits=self.logits)
         # average the loss over all pixels to get the batch loss:
-        self.loss = tf.reduce_mean(loss_per_pixel)
+        self.segmentation_loss = tf.reduce_mean(loss_per_pixel)
+        self.loss = (self.segmentation_loss +
+                    tf.add_n(tf.get_collection("encoder_wd_losses")) +
+                    tf.add_n(tf.get_collection("decoder_wd_losses")))
 
 
 
@@ -241,7 +250,11 @@ class ENet_model(object):
         pretrain_loss_per_img = tf.nn.sparse_softmax_cross_entropy_with_logits(
                     logits=self.pretrain_logits, labels=self.pretrain_labels_ph)
         # # average the loss over all imgs to get the batch loss:
-        self.pretrain_loss = tf.reduce_mean(pretrain_loss_per_img)
+        self.pretrain_class_loss = tf.reduce_mean(pretrain_loss_per_img)
+        # #
+        self.pretrain_loss = (self.pretrain_class_loss +
+                    tf.add_n(tf.get_collection("pretrain_wd_losses")) +
+                    tf.add_n(tf.get_collection("encoder_wd_losses")))
 
     def add_train_op(self):
         """
@@ -264,11 +277,13 @@ class ENet_model(object):
 
     def initial_block(self, x, scope):
         # convolution branch:
-        W_conv = tf.get_variable(scope + "/W",
+        W_conv = self.get_variable_weight_decay(scope + "/W",
                     shape=[3, 3, 3, 13], # ([filter_height, filter_width, in_depth, out_depth])
-                    initializer=tf.contrib.layers.xavier_initializer())
-        b_conv = tf.get_variable(scope + "/b", shape=[13], # ([out_depth]], one bias weight per out depth layer),
-                    initializer=tf.constant_initializer(0))
+                    initializer=tf.contrib.layers.xavier_initializer(),
+                    loss_category="encoder_wd_losses")
+        b_conv = self.get_variable_weight_decay(scope + "/b", shape=[13], # ([out_depth]], one bias weight per out depth layer),
+                    initializer=tf.constant_initializer(0),
+                    loss_category="encoder_wd_losses")
         conv_branch = tf.nn.conv2d(x, W_conv, strides=[1, 2, 2, 1],
                     padding="SAME") + b_conv
 
@@ -280,8 +295,7 @@ class ENet_model(object):
         concat = tf.concat([conv_branch, pool_branch], axis=3) # (3: the depth axis)
 
         # apply batch normalization and PReLU:
-        output = tf.contrib.slim.batch_norm(concat,
-                    is_training=self.training_ph)
+        output = tf.contrib.slim.batch_norm(concat)
         output = PReLU(output, scope=scope)
 
         return output
@@ -297,41 +311,46 @@ class ENet_model(object):
 
         # # 1x1 projection:
         if downsampling:
-            W_conv = tf.get_variable(scope + "/W_proj",
+            W_conv = self.get_variable_weight_decay(scope + "/W_proj",
                         shape=[2, 2, input_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                        initializer=tf.contrib.layers.xavier_initializer())
+                        initializer=tf.contrib.layers.xavier_initializer(),
+                        loss_category="encoder_wd_losses")
             conv_branch = tf.nn.conv2d(conv_branch, W_conv, strides=[1, 2, 2, 1],
                         padding="VALID") # NOTE! no bias terms
         else:
-            W_proj = tf.get_variable(scope + "/W_proj",
+            W_proj = self.get_variable_weight_decay(scope + "/W_proj",
                         shape=[1, 1, input_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                        initializer=tf.contrib.layers.xavier_initializer())
+                        initializer=tf.contrib.layers.xavier_initializer(),
+                        loss_category="encoder_wd_losses")
             conv_branch = tf.nn.conv2d(conv_branch, W_proj, strides=[1, 1, 1, 1],
                         padding="VALID") # NOTE! no bias terms
         # # # batch norm and PReLU:
-        conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
+        conv_branch = tf.contrib.slim.batch_norm(conv_branch)
         conv_branch = PReLU(conv_branch, scope=scope + "/proj")
 
         # # conv:
-        W_conv = tf.get_variable(scope + "/W_conv",
+        W_conv = self.get_variable_weight_decay(scope + "/W_conv",
                     shape=[3, 3, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                    initializer=tf.contrib.layers.xavier_initializer())
-        b_conv = tf.get_variable(scope + "/b_conv", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
-                    initializer=tf.constant_initializer(0))
+                    initializer=tf.contrib.layers.xavier_initializer(),
+                    loss_category="encoder_wd_losses")
+        b_conv = self.get_variable_weight_decay(scope + "/b_conv", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
+                    initializer=tf.constant_initializer(0),
+                    loss_category="encoder_wd_losses")
         conv_branch = tf.nn.conv2d(conv_branch, W_conv, strides=[1, 1, 1, 1],
                     padding="SAME") + b_conv
         # # # batch norm and PReLU:
-        conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
+        conv_branch = tf.contrib.slim.batch_norm(conv_branch)
         conv_branch = PReLU(conv_branch, scope=scope + "/conv")
 
         # # 1x1 expansion:
-        W_exp = tf.get_variable(scope + "/W_exp",
+        W_exp = self.get_variable_weight_decay(scope + "/W_exp",
                     shape=[1, 1, internal_depth, output_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                    initializer=tf.contrib.layers.xavier_initializer())
+                    initializer=tf.contrib.layers.xavier_initializer(),
+                    loss_category="encoder_wd_losses")
         conv_branch = tf.nn.conv2d(conv_branch, W_exp, strides=[1, 1, 1, 1],
                     padding="VALID") # NOTE! no bias terms
         # # # batch norm:
-        conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
+        conv_branch = tf.contrib.slim.batch_norm(conv_branch)
         # NOTE! no PReLU here
 
         # # regularizer:
@@ -376,35 +395,39 @@ class ENet_model(object):
         conv_branch = x
 
         # # 1x1 projection:
-        W_proj = tf.get_variable(scope + "/W_proj",
+        W_proj = self.get_variable_weight_decay(scope + "/W_proj",
                     shape=[1, 1, input_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                    initializer=tf.contrib.layers.xavier_initializer())
+                    initializer=tf.contrib.layers.xavier_initializer(),
+                    loss_category="encoder_wd_losses")
         conv_branch = tf.nn.conv2d(conv_branch, W_proj, strides=[1, 1, 1, 1],
                     padding="VALID") # NOTE! no bias terms
         # # # batch norm and PReLU:
-        conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
+        conv_branch = tf.contrib.slim.batch_norm(conv_branch)
         conv_branch = PReLU(conv_branch, scope=scope + "/proj")
 
         # # dilated conv:
-        W_conv = tf.get_variable(scope + "/W_conv",
+        W_conv = self.get_variable_weight_decay(scope + "/W_conv",
                     shape=[3, 3, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                    initializer=tf.contrib.layers.xavier_initializer())
-        b_conv = tf.get_variable(scope + "/b_conv", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
-                    initializer=tf.constant_initializer(0))
+                    initializer=tf.contrib.layers.xavier_initializer(),
+                    loss_category="encoder_wd_losses")
+        b_conv = self.get_variable_weight_decay(scope + "/b_conv", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
+                    initializer=tf.constant_initializer(0),
+                    loss_category="encoder_wd_losses")
         conv_branch = tf.nn.atrous_conv2d(conv_branch, W_conv, rate=dilation_rate,
                     padding="SAME") + b_conv
         # # # batch norm and PReLU:
-        conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
+        conv_branch = tf.contrib.slim.batch_norm(conv_branch)
         conv_branch = PReLU(conv_branch, scope=scope + "/conv")
 
         # # 1x1 expansion:
-        W_exp = tf.get_variable(scope + "/W_exp",
+        W_exp = self.get_variable_weight_decay(scope + "/W_exp",
                     shape=[1, 1, internal_depth, output_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                    initializer=tf.contrib.layers.xavier_initializer())
+                    initializer=tf.contrib.layers.xavier_initializer(),
+                    loss_category="encoder_wd_losses")
         conv_branch = tf.nn.conv2d(conv_branch, W_exp, strides=[1, 1, 1, 1],
                     padding="VALID") # NOTE! no bias terms
         # # # batch norm:
-        conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
+        conv_branch = tf.contrib.slim.batch_norm(conv_branch)
         # NOTE! no PReLU here
 
         # # regularizer:
@@ -430,42 +453,47 @@ class ENet_model(object):
         conv_branch = x
 
         # # 1x1 projection:
-        W_proj = tf.get_variable(scope + "/W_proj",
+        W_proj = self.get_variable_weight_decay(scope + "/W_proj",
                     shape=[1, 1, input_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                    initializer=tf.contrib.layers.xavier_initializer())
+                    initializer=tf.contrib.layers.xavier_initializer(),
+                    loss_category="encoder_wd_losses")
         conv_branch = tf.nn.conv2d(conv_branch, W_proj, strides=[1, 1, 1, 1],
                     padding="VALID") # NOTE! no bias terms
         # # # batch norm and PReLU:
-        conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
+        conv_branch = tf.contrib.slim.batch_norm(conv_branch)
         conv_branch = PReLU(conv_branch, scope=scope + "/proj")
 
         # # asymmetric conv:
         # # # asymmetric conv 1:
-        W_conv1 = tf.get_variable(scope + "/W_conv1",
+        W_conv1 = self.get_variable_weight_decay(scope + "/W_conv1",
                     shape=[5, 1, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                    initializer=tf.contrib.layers.xavier_initializer())
+                    initializer=tf.contrib.layers.xavier_initializer(),
+                    loss_category="encoder_wd_losses")
         conv_branch = tf.nn.conv2d(conv_branch, W_conv1, strides=[1, 1, 1, 1],
                     padding="SAME") # NOTE! no bias terms
         # # # asymmetric conv 2:
-        W_conv2 = tf.get_variable(scope + "/W_conv2",
+        W_conv2 = self.get_variable_weight_decay(scope + "/W_conv2",
                     shape=[1, 5, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                    initializer=tf.contrib.layers.xavier_initializer())
-        b_conv2 = tf.get_variable(scope + "/b_conv2", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
-                    initializer=tf.constant_initializer(0))
+                    initializer=tf.contrib.layers.xavier_initializer(),
+                    loss_category="encoder_wd_losses")
+        b_conv2 = self.get_variable_weight_decay(scope + "/b_conv2", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
+                    initializer=tf.constant_initializer(0),
+                    loss_category="encoder_wd_losses")
         conv_branch = tf.nn.conv2d(conv_branch, W_conv2, strides=[1, 1, 1, 1],
                     padding="SAME") + b_conv2
         # # # batch norm and PReLU:
-        conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
+        conv_branch = tf.contrib.slim.batch_norm(conv_branch)
         conv_branch = PReLU(conv_branch, scope=scope + "/conv")
 
         # # 1x1 expansion:
-        W_exp = tf.get_variable(scope + "/W_exp",
+        W_exp = self.get_variable_weight_decay(scope + "/W_exp",
                     shape=[1, 1, internal_depth, output_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                    initializer=tf.contrib.layers.xavier_initializer())
+                    initializer=tf.contrib.layers.xavier_initializer(),
+                    loss_category="encoder_wd_losses")
         conv_branch = tf.nn.conv2d(conv_branch, W_exp, strides=[1, 1, 1, 1],
                     padding="VALID") # NOTE! no bias terms
         # # # batch norm:
-        conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
+        conv_branch = tf.contrib.slim.batch_norm(conv_branch)
         # NOTE! no PReLU here
 
         # # regularizer:
@@ -494,13 +522,14 @@ class ENet_model(object):
 
         if upsampling:
             # # 1x1 projection (to decrease depth to the same value as before downsampling):
-            W_upsample = tf.get_variable(scope + "/W_upsample",
+            W_upsample = self.get_variable_weight_decay(scope + "/W_upsample",
                         shape=[1, 1, input_depth, output_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                        initializer=tf.contrib.layers.xavier_initializer())
+                        initializer=tf.contrib.layers.xavier_initializer(),
+                        loss_category="decoder_wd_losses")
             main_branch = tf.nn.conv2d(main_branch, W_upsample, strides=[1, 1, 1, 1],
                         padding="VALID") # NOTE! no bias terms
             # # # batch norm:
-            main_branch = tf.contrib.slim.batch_norm(main_branch, is_training=self.training_ph)
+            main_branch = tf.contrib.slim.batch_norm(main_branch)
             # NOTE! no ReLU here
 
             # # max unpooling:
@@ -512,48 +541,54 @@ class ENet_model(object):
         conv_branch = x
 
         # # 1x1 projection:
-        W_proj = tf.get_variable(scope + "/W_proj",
+        W_proj = self.get_variable_weight_decay(scope + "/W_proj",
                     shape=[1, 1, input_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                    initializer=tf.contrib.layers.xavier_initializer())
+                    initializer=tf.contrib.layers.xavier_initializer(),
+                    loss_category="decoder_wd_losses")
         conv_branch = tf.nn.conv2d(conv_branch, W_proj, strides=[1, 1, 1, 1],
                     padding="VALID") # NOTE! no bias terms
         # # # batch norm and ReLU:
-        conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
+        conv_branch = tf.contrib.slim.batch_norm(conv_branch)
         conv_branch = tf.nn.relu(conv_branch)
 
         # # conv:
         if upsampling:
             # deconvolution:
-            W_conv = tf.get_variable(scope + "/W_conv",
+            W_conv = self.get_variable_weight_decay(scope + "/W_conv",
                         shape=[3, 3, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                        initializer=tf.contrib.layers.xavier_initializer())
-            b_conv = tf.get_variable(scope + "/b_conv", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
-                        initializer=tf.constant_initializer(0))
+                        initializer=tf.contrib.layers.xavier_initializer(),
+                        loss_category="decoder_wd_losses")
+            b_conv = self.get_variable_weight_decay(scope + "/b_conv", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
+                        initializer=tf.constant_initializer(0),
+                        loss_category="decoder_wd_losses")
             main_branch_shape = main_branch.get_shape().as_list()
             output_shape = tf.convert_to_tensor([main_branch_shape[0],
                         main_branch_shape[1], main_branch_shape[2], internal_depth])
             conv_branch = tf.nn.conv2d_transpose(conv_branch, W_conv, output_shape=output_shape,
                         strides=[1, 2, 2, 1], padding="SAME") + b_conv
         else:
-            W_conv = tf.get_variable(scope + "/W_conv",
+            W_conv = self.get_variable_weight_decay(scope + "/W_conv",
                         shape=[3, 3, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                        initializer=tf.contrib.layers.xavier_initializer())
-            b_conv = tf.get_variable(scope + "/b_conv", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
-                        initializer=tf.constant_initializer(0))
+                        initializer=tf.contrib.layers.xavier_initializer(),
+                        loss_category="decoder_wd_losses")
+            b_conv = self.get_variable_weight_decay(scope + "/b_conv", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
+                        initializer=tf.constant_initializer(0),
+                        loss_category="decoder_wd_losses")
             conv_branch = tf.nn.conv2d(conv_branch, W_conv, strides=[1, 1, 1, 1],
                         padding="SAME") + b_conv
         # # # batch norm and ReLU:
-        conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
+        conv_branch = tf.contrib.slim.batch_norm(conv_branch)
         conv_branch = tf.nn.relu(conv_branch)
 
         # # 1x1 expansion:
-        W_exp = tf.get_variable(scope + "/W_exp",
+        W_exp = self.get_variable_weight_decay(scope + "/W_exp",
                     shape=[1, 1, internal_depth, output_depth], # ([filter_height, filter_width, in_depth, out_depth])
-                    initializer=tf.contrib.layers.xavier_initializer())
+                    initializer=tf.contrib.layers.xavier_initializer(),
+                    loss_category="decoder_wd_losses")
         conv_branch = tf.nn.conv2d(conv_branch, W_exp, strides=[1, 1, 1, 1],
                     padding="VALID") # NOTE! no bias terms
         # # # batch norm:
-        conv_branch = tf.contrib.slim.batch_norm(conv_branch, is_training=self.training_ph)
+        conv_branch = tf.contrib.slim.batch_norm(conv_branch)
         # NOTE! no ReLU here
 
         # NOTE! no regularizer
@@ -564,3 +599,11 @@ class ENet_model(object):
         output = tf.nn.relu(merged)
 
         return output
+
+    def get_variable_weight_decay(self, name, shape, initializer, loss_category, dtype=tf.float32):
+        variable = tf.get_variable(name, shape=shape, dtype=dtype,
+                    initializer=initializer)
+        weight_decay = self.wd*tf.nn.l2_loss(variable)
+        tf.add_to_collection(loss_category, weight_decay)
+
+        return variable

@@ -5,120 +5,121 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import cv2
+import random
 
 from model import ENet_model
 
-#project_dir = "/home/fregu856/segmentation/"
-project_dir = "/root/segmentation/"
-
-data_dir = project_dir + "data/"
-
+model_id = "pretrain_1" # (change this to not overwrite all log data when you train the model)
+batch_size = 4
 img_height = 512
 img_width = 1024
-no_of_classes = 2
+
+model = ENet_model(model_id, img_height=img_height, img_width=img_width, batch_size=batch_size)
 
 train_mean_channels = cPickle.load(open("data/mean_channels.pkl"))
-print train_mean_img
 
-def evaluate_on_val(batch_size, sess):
+# load the training data from disk:
+train_img_paths = cPickle.load(open(data_dir + "train_img_paths.pkl"))
+train_trainId_label_paths = cPickle.load(open(data_dir + "train_trainId_label_paths.pkl"))
+train_data = zip(train_img_paths, train_trainId_label_paths)
+
+# compute the number of batches needed to iterate through the training data:
+no_of_train_imgs = len(train_img_paths)
+no_of_batches = int(no_of_train_imgs/batch_size)
+
+# load the validation data from disk:
+val_img_paths = cPickle.load(open(data_dir + "val_img_paths.pkl"))
+val_trainId_label_paths = cPickle.load(open(data_dir + "val_trainId_label_paths.pkl"))
+val_data = zip(val_img_paths, val_trainId_label_paths)
+
+# compute the number of batches needed to iterate through the val data:
+no_of_val_imgs = len(val_img_paths)
+no_of_val_batches = int(no_of_val_imgs/batch_size)
+
+def evaluate_on_val():
     """
     - DOES:
     """
 
-    # load the val data from disk:
-    val_trainId_label_paths = cPickle.load(open(data_dir + "val_trainId_label_paths.pkl"))
-    val_img_paths = cPickle.load(open(data_dir + "val_img_paths.pkl"))
+    random.shuffle(val_data)
+    val_img_paths, val_trainId_label_paths = zip(*val_data)
 
-    no_of_val_imgs = len(val_img_paths)
-    no_of_val_batches = int(no_of_val_imgs/batch_size)
+    layer_idx = np.arange(img_height).reshape(img_height, 1)
+    component_idx = np.tile(np.arange(img_width), (img_height, 1))
 
     val_batch_losses = []
     batch_pointer = 0
     for step in range(no_of_val_batches):
-        print step
         batch_imgs = np.zeros((batch_size, img_height, img_width, 3), dtype=np.float32)
         batch_onehot_labels = np.zeros((batch_size, img_height, img_width, no_of_classes), dtype=np.float32)
-        #batch_onehot_labels = np.zeros((batch_size, img_height, img_width), dtype=np.int32)
-        layer_idx = np.arange(img_height).reshape(img_height, 1)
-        component_idx = np.tile(np.arange(img_width), (img_height, 1))
         for i in range(batch_size):
             # read the next img:
             img = cv2.imread(val_img_paths[batch_pointer + i], -1)
-            cv2.imwrite("img_" + str(i) + ".png", img)
             img = img - train_mean_channels
             batch_imgs[i] = img
 
+            # read the next label:
             trainId_label = cv2.imread(val_trainId_label_paths[batch_pointer + i], -1)
-            # onehot_label = tf.one_hot(indices=trainId_label, depth=no_of_classes)
-            # onehot_label = sess.run(onehot_label) # (convert to numpy array)
+
+            # convert the label to onehot:
             onehot_label = np.zeros((img_height, img_width, no_of_classes), dtype=np.float32)
             onehot_label[layer_idx, component_idx, trainId_label] = 1
             batch_onehot_labels[i] = onehot_label
-            #batch_onehot_labels[i] = trainId_label
         batch_pointer += batch_size
 
         batch_feed_dict = model.create_feed_dict(imgs_batch=batch_imgs, early_drop_prob=0.0,
-                    late_drop_prob=0.0, training=False, onehot_labels_batch=batch_onehot_labels)
+                    late_drop_prob=0.0, onehot_labels_batch=batch_onehot_labels)
 
         batch_loss, logits = sess.run([model.loss, model.logits],
                     feed_dict=batch_feed_dict)
         val_batch_losses.append(batch_loss)
-        print batch_loss
+        print ("epoch: %d/%d, val step: %d/%d, val batch loss: %g" % (epoch+1,
+                    no_of_epochs, step+1, no_of_val_batches, batch_loss))
 
-        predictions = np.argmax(logits, axis=3)
-
-        for i in range(batch_size):
-            prediction = predictions[i]
-            cv2.imwrite("pred_" + str(step) + "_" + str(i) + ".png", prediction)
+        if step == 0:
+            predictions = np.argmax(logits, axis=3)
+            for i in range(batch_size):
+                prediction = predictions[i]
+                cv2.imwrite((model.debug_imgs_dir + "val_" + str(epoch) + "_" +
+                            str(step) + "_" + str(i) + ".png"), prediction)
 
     val_loss = np.mean(val_batch_losses)
     return val_loss
 
-def train_data_iterator(batch_size, session):
+def train_data_iterator():
     """
     - DOES:
     """
 
-    # load the training data from disk:
-    train_trainId_label_paths = cPickle.load(open(data_dir + "train_trainId_label_paths.pkl"))
-    train_img_paths = cPickle.load(open(data_dir + "train_img_paths.pkl"))
+    random.shuffle(train_data)
+    train_img_paths, train_trainId_label_paths = zip(*train_data)
 
-    # compute the number of batches needed to iterate through the training data:
-    global no_of_batches
-    no_of_train_imgs = len(train_img_paths)
-    no_of_batches = int(no_of_train_imgs/batch_size)
+    layer_idx = np.arange(img_height).reshape(img_height, 1)
+    component_idx = np.tile(np.arange(img_width), (img_height, 1))
 
     batch_pointer = 0
     for step in range(no_of_batches):
         # get and yield the next batch_size imgs and onehot labels from the training data:
         batch_imgs = np.zeros((batch_size, img_height, img_width, 3), dtype=np.float32)
         batch_onehot_labels = np.zeros((batch_size, img_height, img_width, no_of_classes), dtype=np.float32)
-        #batch_onehot_labels = np.zeros((batch_size, img_height, img_width), dtype=np.int32)
-        layer_idx = np.arange(img_height).reshape(img_height, 1)
-        component_idx = np.tile(np.arange(img_width), (img_height, 1))
         for i in range(batch_size):
             # read the next img:
             img = cv2.imread(train_img_paths[batch_pointer + i], -1)
             img = img - train_mean_channels
             batch_imgs[i] = img
 
+            # read the next label:
             trainId_label = cv2.imread(train_trainId_label_paths[batch_pointer + i], -1)
-            # onehot_label = tf.one_hot(indices=trainId_label, depth=no_of_classes)
-            # onehot_label = sess.run(onehot_label) # (convert to numpy array)
+
+            # convert the label to onehot:
             onehot_label = np.zeros((img_height, img_width, no_of_classes), dtype=np.float32)
             onehot_label[layer_idx, component_idx, trainId_label] = 1
             batch_onehot_labels[i] = onehot_label
-            #batch_onehot_labels[i] = trainId_label
         batch_pointer += batch_size
 
         yield (batch_imgs, batch_onehot_labels)
 
-no_of_epochs = 120
-model_id = "road_non_road_1" # (change this to not overwrite all log data when you train the model)
-
-model = ENet_model(model_id)
-
-batch_size = model.batch_size
+no_of_epochs = 100
 
 # create a saver for saving all model variables/parameters:
 saver = tf.train.Saver(write_version=tf.train.SaverDef.V2)
@@ -136,6 +137,8 @@ with tf.Session() as sess:
     init = tf.global_variables_initializer()
     sess.run(init)
 
+    #saver.restore(sess, "/home/fregu856/2D_detection/training_logs/model_1/checkpoints/model_1_epoch_1.ckpt")
+
     for epoch in range(no_of_epochs):
         print "###########################"
         print "######## NEW EPOCH ########"
@@ -144,10 +147,10 @@ with tf.Session() as sess:
 
         # run an epoch and get all batch losses:
         batch_losses = []
-        for step, (imgs, onehot_labels) in enumerate(train_data_iterator(batch_size, sess)):
+        for step, (imgs, onehot_labels) in enumerate(train_data_iterator()):
             # create a feed dict containing the batch data:
             batch_feed_dict = model.create_feed_dict(imgs_batch=imgs, early_drop_prob=0.01,
-                        late_drop_prob=0.1, training=True, onehot_labels_batch=onehot_labels)
+                        late_drop_prob=0.1, onehot_labels_batch=onehot_labels)
 
             # compute the batch loss and compute & apply all gradients w.r.t to
             # the batch loss (without model.train_op in the call, the network
@@ -168,13 +171,14 @@ with tf.Session() as sess:
         print "training loss: %g" % train_epoch_loss
 
         # run the model on the validation data:
-        val_loss = evaluate_on_val(batch_size, sess)
+        val_loss = evaluate_on_val()
+        
         # save the val epoch loss:
         val_loss_per_epoch.append(val_loss)
         # save the val epoch losses to disk:
         cPickle.dump(val_loss_per_epoch, open("%sval_loss_per_epoch.pkl"\
                     % model.model_dir, "w"))
-        print "validaion loss: %g" % val_loss
+        print "validation loss: %g" % val_loss
 
         if val_loss < max(best_epoch_losses): # (if top 5 performance on val:)
             # save the model weights to disk:
