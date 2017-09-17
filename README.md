@@ -12,3 +12,10 @@ def _MaxPoolGradWithArgmax(op, grad, unused_argmax_grad):
 to the file /usr/local/lib/python2.7/dist-packages/tensorflow/python/ops/nn_grad.py
 
                                               
+****
+
+number of nonroads in pretrain_train before balancing: 100448
+number of roads in pretrain_train before balancing: 34280
+number of nonroads in pretrain_train after balancing: 34280
+number of roads in pretrain_train after balancing: 34280
+number of pretrain_train imgs: 68560
