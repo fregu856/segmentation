@@ -19,3 +19,13 @@ number of roads in pretrain_train before balancing: 34280
 number of nonroads in pretrain_train after balancing: 34280
 number of roads in pretrain_train after balancing: 34280
 number of pretrain_train imgs: 68560
+
+number of nonroads in pretrain_val before balancing: 16643
+number of roads in pretrain_val before balancing: 6110
+number of nonroads in pretrain_val after balancing: 2000
+number of roads in pretrain_val after balancing: 2000
+number of pretrain_val imgs: 4000
+
+number of epochs of pretraining: XXXXXXXXXXXX
+
+plot of train/val loss in pretraining: XXXXXXXXXXXX
