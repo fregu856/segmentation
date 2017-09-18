@@ -7,14 +7,22 @@ import tensorflow as tf
 import cv2
 import random
 
+from utilities import label_img_to_color
+
 from model import ENet_model
 
-model_id = "pretrain_1" # (change this to not overwrite all log data when you train the model)
+#project_dir = "/home/fregu856/segmentation/"
+project_dir = "/root/segmentation/"
+
+data_dir = project_dir + "data/"
+
+model_id = "road_nonroad_4" # (change this to not overwrite all log data when you train the model)
 batch_size = 4
 img_height = 512
 img_width = 1024
 
 model = ENet_model(model_id, img_height=img_height, img_width=img_width, batch_size=batch_size)
+no_of_classes = model.no_of_classes
 
 train_mean_channels = cPickle.load(open("data/mean_channels.pkl"))
 
@@ -76,12 +84,13 @@ def evaluate_on_val():
         print ("epoch: %d/%d, val step: %d/%d, val batch loss: %g" % (epoch+1,
                     no_of_epochs, step+1, no_of_val_batches, batch_loss))
 
-        if step == 0:
+        if step < 4:
             predictions = np.argmax(logits, axis=3)
             for i in range(batch_size):
-                prediction = predictions[i]
+                pred_img = predictions[i]
+                label_img_color = label_img_to_color(pred_img)
                 cv2.imwrite((model.debug_imgs_dir + "val_" + str(epoch) + "_" +
-                            str(step) + "_" + str(i) + ".png"), prediction)
+                            str(step) + "_" + str(i) + ".png"), label_img_color)
 
     val_loss = np.mean(val_batch_losses)
     return val_loss
@@ -122,7 +131,7 @@ def train_data_iterator():
 no_of_epochs = 100
 
 # create a saver for saving all model variables/parameters:
-saver = tf.train.Saver(write_version=tf.train.SaverDef.V2)
+saver = tf.train.Saver(tf.trainable_variables(), write_version=tf.train.SaverDef.V2)
 
 # initialize all log data containers:
 train_loss_per_epoch = []
@@ -137,7 +146,10 @@ with tf.Session() as sess:
     init = tf.global_variables_initializer()
     sess.run(init)
 
-    #saver.restore(sess, "/home/fregu856/2D_detection/training_logs/model_1/checkpoints/model_1_epoch_1.ckpt")
+    # restore the pretrained encoder:
+    saver.restore(sess, project_dir + "training_logs/best_pretrain_model/model_pretrain_1_epoch_9.ckpt")
+
+    #saver.restore(sess, project_dir + "training_logs/model_road_nonroad_2/checkpoints/model_road_nonroad_2_epoch_1.ckpt")
 
     for epoch in range(no_of_epochs):
         print "###########################"
@@ -155,9 +167,14 @@ with tf.Session() as sess:
             # compute the batch loss and compute & apply all gradients w.r.t to
             # the batch loss (without model.train_op in the call, the network
             # would NOT train, we would only compute the batch loss):
-            batch_loss, _ = sess.run([model.loss, model.train_op],
+            batch_loss, _, logits = sess.run([model.loss, model.train_op, model.logits],
                         feed_dict=batch_feed_dict)
             batch_losses.append(batch_loss)
+
+            predictions = np.argmax(logits, axis=3)
+            pred_img = predictions[0]
+            label_img_color = label_img_to_color(pred_img)
+            cv2.imwrite("test.png", label_img_color)
 
             print "step: %d/%d, training batch loss: %g" % (step+1, no_of_batches, batch_loss)
 
@@ -172,7 +189,7 @@ with tf.Session() as sess:
 
         # run the model on the validation data:
         val_loss = evaluate_on_val()
-        
+
         # save the val epoch loss:
         val_loss_per_epoch.append(val_loss)
         # save the val epoch losses to disk:

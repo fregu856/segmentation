@@ -14,7 +14,7 @@ project_dir = "/root/segmentation/"
 
 data_dir = project_dir + "data/"
 
-model_id = "pretrain_1" # (change this to not overwrite all log data when you train the model)
+model_id = "pretrain_2" # (change this to not overwrite all log data when you train the model)
 batch_size = 64
 img_height = 128
 img_width = 256
@@ -141,7 +141,7 @@ with tf.Session() as sess:
     init = tf.global_variables_initializer()
     sess.run(init)
 
-    #saver.restore(sess, "/home/fregu856/2D_detection/training_logs/model_1/checkpoints/model_1_epoch_1.ckpt")
+    #saver.restore(sess, project_dir + "training_logs/best_pretrain_model/model_pretrain_1_epoch_9.ckpt")
 
     for epoch in range(no_of_epochs):
         print "###########################"

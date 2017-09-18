@@ -107,6 +107,8 @@ class ENet_model(object):
         network = self.initial_block(x=self.imgs_ph, scope="inital")
         print network.get_shape().as_list()
 
+        inputs_shape_1 = network.get_shape().as_list()
+
         network, pooling_indices_1 = self.encoder_bottleneck_regular(x=network,
                     output_depth=64, drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_0", downsampling=True)
         print network.get_shape().as_list()
@@ -122,6 +124,8 @@ class ENet_model(object):
         network = self.encoder_bottleneck_regular(x=network,
                     output_depth=64, drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_4")
         print network.get_shape().as_list()
+
+        inputs_shape_2 = network.get_shape().as_list()
 
         network, pooling_indices_2 = self.encoder_bottleneck_regular(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_0", downsampling=True)
@@ -204,7 +208,7 @@ class ENet_model(object):
         print "start of decoder"
         network = self.decoder_bottleneck(x=network,
                     output_depth=64, scope="bottleneck_4_0",
-                    upsampling=True, pooling_indices=pooling_indices_2)
+                    upsampling=True, pooling_indices=pooling_indices_2, output_shape=inputs_shape_2)
         print network.get_shape().as_list()
         network = self.decoder_bottleneck(x=network,
                     output_depth=64, scope="bottleneck_4_1")
@@ -215,7 +219,7 @@ class ENet_model(object):
 
         network = self.decoder_bottleneck(x=network,
                     output_depth=16, scope="bottleneck_5_0",
-                    upsampling=True, pooling_indices=pooling_indices_1)
+                    upsampling=True, pooling_indices=pooling_indices_1, output_shape=inputs_shape_1)
         print network.get_shape().as_list()
         network = self.decoder_bottleneck(x=network,
                     output_depth=16, scope="bottleneck_5_1")
@@ -223,7 +227,7 @@ class ENet_model(object):
 
         # fullconv:
         network = tf.contrib.slim.conv2d_transpose(network, self.no_of_classes,
-                    [2, 2], stride=2, scope="fullconv", padding="SAME", activation_fn=None)
+                    [2, 2], stride=2, scope="fullconv", padding="SAME")
         print network.get_shape().as_list()
 
         self.logits = network
@@ -509,7 +513,7 @@ class ENet_model(object):
 
         return output
 
-    def decoder_bottleneck(self, x, output_depth, scope, proj_ratio=4, upsampling=False, pooling_indices=None):
+    def decoder_bottleneck(self, x, output_depth, scope, proj_ratio=4, upsampling=False, pooling_indices=None, output_shape=None):
         # (decoder uses ReLU instead of PReLU)
 
         input_shape = x.get_shape().as_list()
@@ -533,7 +537,7 @@ class ENet_model(object):
             # NOTE! no ReLU here
 
             # # max unpooling:
-            main_branch = max_unpool(main_branch, pooling_indices)
+            main_branch = max_unpool(main_branch, pooling_indices, output_shape)
 
         main_branch = tf.cast(main_branch, tf.float32)
 

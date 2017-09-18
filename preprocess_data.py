@@ -6,10 +6,10 @@ import tensorflow as tf
 from collections import namedtuple
 import random
 
-# project_dir = "/home/fregu856/segmentation/"
-# data_dir = "/home/fregu856/data/"
-project_dir = "/root/segmentation/"
-data_dir = "/root/data/"
+project_dir = "/home/fregu856/segmentation/"
+data_dir = "/home/fregu856/data/"
+# project_dir = "/root/segmentation/"
+# data_dir = "/root/data/"
 
 # (this is taken from the official Cityscapes scripts:)
 Label = namedtuple( 'Label' , [
@@ -109,13 +109,13 @@ val_imgs_dir = cityscapes_dir + "leftImg8bit/val/"
 train_gt_dir = cityscapes_dir + "gtFine/train/"
 val_gt_dir = cityscapes_dir + "gtFine/val/"
 
-train_dirs = ["jena/", "zurich/", "weimar/", "ulm/", "tubingen/", "stuttgart/",
-            "strasbourg/", "monchengladbach/", "krefeld/", "hanover/",
-            "hamburg/", "erfurt/", "dusseldorf/", "darmstadt/", "cologne/",
-            "bremen/", "bochum/", "aachen/"]
-val_dirs = ["frankfurt/", "munster/", "lindau/"]
-# train_dirs = ["jena/"]
-# val_dirs = ["frankfurt/"]
+# train_dirs = ["jena/", "zurich/", "weimar/", "ulm/", "tubingen/", "stuttgart/",
+#             "strasbourg/", "monchengladbach/", "krefeld/", "hanover/",
+#             "hamburg/", "erfurt/", "dusseldorf/", "darmstadt/", "cologne/",
+#             "bremen/", "bochum/", "aachen/"]
+# val_dirs = ["frankfurt/", "munster/", "lindau/"]
+train_dirs = ["jena/"]
+val_dirs = ["frankfurt/"]
 
 pretrain_train_img_paths = []
 pretrain_train_labels = []
