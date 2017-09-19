@@ -6,10 +6,10 @@ import tensorflow as tf
 from collections import namedtuple
 import random
 
-project_dir = "/home/fregu856/segmentation/"
-data_dir = "/home/fregu856/data/"
-# project_dir = "/root/segmentation/"
-# data_dir = "/root/data/"
+# project_dir = "/home/fregu856/segmentation/"
+# data_dir = "/home/fregu856/data/"
+project_dir = "/root/segmentation/"
+data_dir = "/root/data/"
 
 # (this is taken from the official Cityscapes scripts:)
 Label = namedtuple( 'Label' , [
@@ -48,48 +48,88 @@ Label = namedtuple( 'Label' , [
     'color'       , # The color of this label
     ] )
 
-# (this is taken from the official Cityscapes scripts:)
+# # (this is taken from the official Cityscapes scripts:)
+# labels = [
+#     #       name                     id    trainId   category            catId     hasInstances   ignoreInEval   color
+#     Label(  'unlabeled'            ,  0 ,      1 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+#     Label(  'ego vehicle'          ,  1 ,      1 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+#     Label(  'rectification border' ,  2 ,      1 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+#     Label(  'out of roi'           ,  3 ,      1 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+#     Label(  'static'               ,  4 ,      1 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+#     Label(  'dynamic'              ,  5 ,      1 , 'void'            , 0       , False        , True         , (111, 74,  0) ),
+#     Label(  'ground'               ,  6 ,      1 , 'void'            , 0       , False        , True         , ( 81,  0, 81) ),
+#     Label(  'road'                 ,  7 ,        0 , 'flat'            , 1       , False        , False        , (128, 64,128) ),
+#     Label(  'sidewalk'             ,  8 ,        1 , 'flat'            , 1       , False        , False        , (244, 35,232) ),
+#     Label(  'parking'              ,  9 ,      1 , 'flat'            , 1       , False        , True         , (250,170,160) ),
+#     Label(  'rail track'           , 10 ,      1 , 'flat'            , 1       , False        , True         , (230,150,140) ),
+#     Label(  'building'             , 11 ,        1 , 'construction'    , 2       , False        , False        , ( 70, 70, 70) ),
+#     Label(  'wall'                 , 12 ,        1 , 'construction'    , 2       , False        , False        , (102,102,156) ),
+#     Label(  'fence'                , 13 ,        1 , 'construction'    , 2       , False        , False        , (190,153,153) ),
+#     Label(  'guard rail'           , 14 ,      1 , 'construction'    , 2       , False        , True         , (180,165,180) ),
+#     Label(  'bridge'               , 15 ,      1 , 'construction'    , 2       , False        , True         , (150,100,100) ),
+#     Label(  'tunnel'               , 16 ,      1 , 'construction'    , 2       , False        , True         , (150,120, 90) ),
+#     Label(  'pole'                 , 17 ,        1 , 'object'          , 3       , False        , False        , (153,153,153) ),
+#     Label(  'polegroup'            , 18 ,      1 , 'object'          , 3       , False        , True         , (153,153,153) ),
+#     Label(  'traffic light'        , 19 ,        1 , 'object'          , 3       , False        , False        , (250,170, 30) ),
+#     Label(  'traffic sign'         , 20 ,        1 , 'object'          , 3       , False        , False        , (220,220,  0) ),
+#     Label(  'vegetation'           , 21 ,        1 , 'nature'          , 4       , False        , False        , (107,142, 35) ),
+#     Label(  'terrain'              , 22 ,        1 , 'nature'          , 4       , False        , False        , (152,251,152) ),
+#     Label(  'sky'                  , 23 ,       1 , 'sky'             , 5       , False        , False        , ( 70,130,180) ),
+#     Label(  'person'               , 24 ,       1 , 'human'           , 6       , True         , False        , (220, 20, 60) ),
+#     Label(  'rider'                , 25 ,       1 , 'human'           , 6       , True         , False        , (255,  0,  0) ),
+#     Label(  'car'                  , 26 ,       1 , 'vehicle'         , 7       , True         , False        , (  0,  0,142) ),
+#     Label(  'truck'                , 27 ,       1 , 'vehicle'         , 7       , True         , False        , (  0,  0, 70) ),
+#     Label(  'bus'                  , 28 ,       1 , 'vehicle'         , 7       , True         , False        , (  0, 60,100) ),
+#     Label(  'caravan'              , 29 ,      1 , 'vehicle'         , 7       , True         , True         , (  0,  0, 90) ),
+#     Label(  'trailer'              , 30 ,      1 , 'vehicle'         , 7       , True         , True         , (  0,  0,110) ),
+#     Label(  'train'                , 31 ,       1 , 'vehicle'         , 7       , True         , False        , (  0, 80,100) ),
+#     Label(  'motorcycle'           , 32 ,       1 , 'vehicle'         , 7       , True         , False        , (  0,  0,230) ),
+#     Label(  'bicycle'              , 33 ,       1 , 'vehicle'         , 7       , True         , False        , (119, 11, 32) ),
+#     Label(  'license plate'        , -1 ,       -1 , 'vehicle'         , 7       , False        , True         , (  0,  0,142) ),
+# ]
+
+# (this is taken from the official Cityscapes scripts)
 labels = [
     #       name                     id    trainId   category            catId     hasInstances   ignoreInEval   color
-    Label(  'unlabeled'            ,  0 ,      1 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
-    Label(  'ego vehicle'          ,  1 ,      1 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
-    Label(  'rectification border' ,  2 ,      1 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
-    Label(  'out of roi'           ,  3 ,      1 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
-    Label(  'static'               ,  4 ,      1 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
-    Label(  'dynamic'              ,  5 ,      1 , 'void'            , 0       , False        , True         , (111, 74,  0) ),
-    Label(  'ground'               ,  6 ,      1 , 'void'            , 0       , False        , True         , ( 81,  0, 81) ),
+    Label(  'unlabeled'            ,  0 ,      19 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+    Label(  'ego vehicle'          ,  1 ,      19 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+    Label(  'rectification border' ,  2 ,      19 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+    Label(  'out of roi'           ,  3 ,      19 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+    Label(  'static'               ,  4 ,      19 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
+    Label(  'dynamic'              ,  5 ,      19 , 'void'            , 0       , False        , True         , (111, 74,  0) ),
+    Label(  'ground'               ,  6 ,      19 , 'void'            , 0       , False        , True         , ( 81,  0, 81) ),
     Label(  'road'                 ,  7 ,        0 , 'flat'            , 1       , False        , False        , (128, 64,128) ),
     Label(  'sidewalk'             ,  8 ,        1 , 'flat'            , 1       , False        , False        , (244, 35,232) ),
-    Label(  'parking'              ,  9 ,      1 , 'flat'            , 1       , False        , True         , (250,170,160) ),
-    Label(  'rail track'           , 10 ,      1 , 'flat'            , 1       , False        , True         , (230,150,140) ),
-    Label(  'building'             , 11 ,        1 , 'construction'    , 2       , False        , False        , ( 70, 70, 70) ),
-    Label(  'wall'                 , 12 ,        1 , 'construction'    , 2       , False        , False        , (102,102,156) ),
-    Label(  'fence'                , 13 ,        1 , 'construction'    , 2       , False        , False        , (190,153,153) ),
-    Label(  'guard rail'           , 14 ,      1 , 'construction'    , 2       , False        , True         , (180,165,180) ),
-    Label(  'bridge'               , 15 ,      1 , 'construction'    , 2       , False        , True         , (150,100,100) ),
-    Label(  'tunnel'               , 16 ,      1 , 'construction'    , 2       , False        , True         , (150,120, 90) ),
-    Label(  'pole'                 , 17 ,        1 , 'object'          , 3       , False        , False        , (153,153,153) ),
-    Label(  'polegroup'            , 18 ,      1 , 'object'          , 3       , False        , True         , (153,153,153) ),
-    Label(  'traffic light'        , 19 ,        1 , 'object'          , 3       , False        , False        , (250,170, 30) ),
-    Label(  'traffic sign'         , 20 ,        1 , 'object'          , 3       , False        , False        , (220,220,  0) ),
-    Label(  'vegetation'           , 21 ,        1 , 'nature'          , 4       , False        , False        , (107,142, 35) ),
-    Label(  'terrain'              , 22 ,        1 , 'nature'          , 4       , False        , False        , (152,251,152) ),
-    Label(  'sky'                  , 23 ,       1 , 'sky'             , 5       , False        , False        , ( 70,130,180) ),
-    Label(  'person'               , 24 ,       1 , 'human'           , 6       , True         , False        , (220, 20, 60) ),
-    Label(  'rider'                , 25 ,       1 , 'human'           , 6       , True         , False        , (255,  0,  0) ),
-    Label(  'car'                  , 26 ,       1 , 'vehicle'         , 7       , True         , False        , (  0,  0,142) ),
-    Label(  'truck'                , 27 ,       1 , 'vehicle'         , 7       , True         , False        , (  0,  0, 70) ),
-    Label(  'bus'                  , 28 ,       1 , 'vehicle'         , 7       , True         , False        , (  0, 60,100) ),
-    Label(  'caravan'              , 29 ,      1 , 'vehicle'         , 7       , True         , True         , (  0,  0, 90) ),
-    Label(  'trailer'              , 30 ,      1 , 'vehicle'         , 7       , True         , True         , (  0,  0,110) ),
-    Label(  'train'                , 31 ,       1 , 'vehicle'         , 7       , True         , False        , (  0, 80,100) ),
-    Label(  'motorcycle'           , 32 ,       1 , 'vehicle'         , 7       , True         , False        , (  0,  0,230) ),
-    Label(  'bicycle'              , 33 ,       1 , 'vehicle'         , 7       , True         , False        , (119, 11, 32) ),
+    Label(  'parking'              ,  9 ,      19 , 'flat'            , 1       , False        , True         , (250,170,160) ),
+    Label(  'rail track'           , 10 ,      19 , 'flat'            , 1       , False        , True         , (230,150,140) ),
+    Label(  'building'             , 11 ,        2 , 'construction'    , 2       , False        , False        , ( 70, 70, 70) ),
+    Label(  'wall'                 , 12 ,        3 , 'construction'    , 2       , False        , False        , (102,102,156) ),
+    Label(  'fence'                , 13 ,        4 , 'construction'    , 2       , False        , False        , (190,153,153) ),
+    Label(  'guard rail'           , 14 ,      19 , 'construction'    , 2       , False        , True         , (180,165,180) ),
+    Label(  'bridge'               , 15 ,      19 , 'construction'    , 2       , False        , True         , (150,100,100) ),
+    Label(  'tunnel'               , 16 ,      19 , 'construction'    , 2       , False        , True         , (150,120, 90) ),
+    Label(  'pole'                 , 17 ,        5 , 'object'          , 3       , False        , False        , (153,153,153) ),
+    Label(  'polegroup'            , 18 ,      19 , 'object'          , 3       , False        , True         , (153,153,153) ),
+    Label(  'traffic light'        , 19 ,        6 , 'object'          , 3       , False        , False        , (250,170, 30) ),
+    Label(  'traffic sign'         , 20 ,        7 , 'object'          , 3       , False        , False        , (220,220,  0) ),
+    Label(  'vegetation'           , 21 ,        8 , 'nature'          , 4       , False        , False        , (107,142, 35) ),
+    Label(  'terrain'              , 22 ,        9 , 'nature'          , 4       , False        , False        , (152,251,152) ),
+    Label(  'sky'                  , 23 ,       10 , 'sky'             , 5       , False        , False        , ( 70,130,180) ),
+    Label(  'person'               , 24 ,       11 , 'human'           , 6       , True         , False        , (220, 20, 60) ),
+    Label(  'rider'                , 25 ,       12 , 'human'           , 6       , True         , False        , (255,  0,  0) ),
+    Label(  'car'                  , 26 ,       13 , 'vehicle'         , 7       , True         , False        , (  0,  0,142) ),
+    Label(  'truck'                , 27 ,       14 , 'vehicle'         , 7       , True         , False        , (  0,  0, 70) ),
+    Label(  'bus'                  , 28 ,       15 , 'vehicle'         , 7       , True         , False        , (  0, 60,100) ),
+    Label(  'caravan'              , 29 ,      19 , 'vehicle'         , 7       , True         , True         , (  0,  0, 90) ),
+    Label(  'trailer'              , 30 ,      19 , 'vehicle'         , 7       , True         , True         , (  0,  0,110) ),
+    Label(  'train'                , 31 ,       16 , 'vehicle'         , 7       , True         , False        , (  0, 80,100) ),
+    Label(  'motorcycle'           , 32 ,       17 , 'vehicle'         , 7       , True         , False        , (  0,  0,230) ),
+    Label(  'bicycle'              , 33 ,       18 , 'vehicle'         , 7       , True         , False        , (119, 11, 32) ),
     Label(  'license plate'        , -1 ,       -1 , 'vehicle'         , 7       , False        , True         , (  0,  0,142) ),
 ]
 
-road_label = 0
-nonroad_label = 1
+# road_label = 0
+# nonroad_label = 1
 
 id_to_class = {label.id: label.name for label in labels}
 
@@ -100,7 +140,7 @@ original_img_height = 1024
 original_img_width = 2048
 new_img_height = 512
 new_img_width = 1024
-no_of_classes = 2
+no_of_classes = 20
 
 cityscapes_dir = data_dir + "cityscapes/"
 
@@ -109,16 +149,16 @@ val_imgs_dir = cityscapes_dir + "leftImg8bit/val/"
 train_gt_dir = cityscapes_dir + "gtFine/train/"
 val_gt_dir = cityscapes_dir + "gtFine/val/"
 
-# train_dirs = ["jena/", "zurich/", "weimar/", "ulm/", "tubingen/", "stuttgart/",
-#             "strasbourg/", "monchengladbach/", "krefeld/", "hanover/",
-#             "hamburg/", "erfurt/", "dusseldorf/", "darmstadt/", "cologne/",
-#             "bremen/", "bochum/", "aachen/"]
-# val_dirs = ["frankfurt/", "munster/", "lindau/"]
-train_dirs = ["jena/"]
-val_dirs = ["frankfurt/"]
+train_dirs = ["jena/", "zurich/", "weimar/", "ulm/", "tubingen/", "stuttgart/",
+            "strasbourg/", "monchengladbach/", "krefeld/", "hanover/",
+            "hamburg/", "erfurt/", "dusseldorf/", "darmstadt/", "cologne/",
+            "bremen/", "bochum/", "aachen/"]
+val_dirs = ["frankfurt/", "munster/", "lindau/"]
+# train_dirs = ["jena/"]
+# val_dirs = ["frankfurt/"]
 
-pretrain_train_img_paths = []
-pretrain_train_labels = []
+# pretrain_train_img_paths = []
+# pretrain_train_labels = []
 train_img_paths = []
 train_trainId_label_paths = []
 for dir_step, dir in enumerate(train_dirs):
@@ -154,89 +194,89 @@ for dir_step, dir in enumerate(train_dirs):
 
 
 
-        gt_trainId = id_to_trainId_map_func(gt_img)
-        for col in range(8):
-            for row in range(8):
-                img_crop = img[row*128:(row + 1)*128, col*256:(col + 1)*256]
-                gt_crop = gt_trainId[row*128:(row + 1)*128, col*256:(col + 1)*256]
+    #     gt_trainId = id_to_trainId_map_func(gt_img)
+    #     for col in range(8):
+    #         for row in range(8):
+    #             img_crop = img[row*128:(row + 1)*128, col*256:(col + 1)*256]
+    #             gt_crop = gt_trainId[row*128:(row + 1)*128, col*256:(col + 1)*256]
+    #
+    #             for trainId in range(no_of_classes):
+    #                 trainId_mask = np.equal(gt_crop, trainId)
+    #                 trainId_count = np.sum(trainId_mask)
+    #                 trainId_prop = float(trainId_count)/float(128*256)
+    #                 if trainId_prop > 0.95:
+    #                     img_crop_path = project_dir + "data/" + img_id + "_" + str(row) + "_" + str(col) + ".png"
+    #                     cv2.imwrite(img_crop_path, img_crop)
+    #                     pretrain_train_img_paths.append(img_crop_path)
+    #                     pretrain_train_labels.append(trainId)
+    #                     break
+    # no_of_nonroads = pretrain_train_labels.count(nonroad_label)
+    # no_of_roads = len(pretrain_train_labels) - no_of_nonroads
+    # print "number of nonroads: %d" % no_of_nonroads
+    # print "number of roads: %d" % no_of_roads
 
-                for trainId in range(no_of_classes):
-                    trainId_mask = np.equal(gt_crop, trainId)
-                    trainId_count = np.sum(trainId_mask)
-                    trainId_prop = float(trainId_count)/float(128*256)
-                    if trainId_prop > 0.95:
-                        img_crop_path = project_dir + "data/" + img_id + "_" + str(row) + "_" + str(col) + ".png"
-                        cv2.imwrite(img_crop_path, img_crop)
-                        pretrain_train_img_paths.append(img_crop_path)
-                        pretrain_train_labels.append(trainId)
-                        break
-    no_of_nonroads = pretrain_train_labels.count(nonroad_label)
-    no_of_roads = len(pretrain_train_labels) - no_of_nonroads
-    print "number of nonroads: %d" % no_of_nonroads
-    print "number of roads: %d" % no_of_roads
-
-no_of_nonroads = pretrain_train_labels.count(nonroad_label)
-no_of_roads = len(pretrain_train_labels) - no_of_nonroads
-print "number of nonroads in pretrain_train before balancing: %d" % no_of_nonroads
-print "number of roads in pretrain_train before balancing: %d" % no_of_roads
-
-pretrain_train_data = zip(pretrain_train_img_paths, pretrain_train_labels)
-random.shuffle(pretrain_train_data)
-random.shuffle(pretrain_train_data)
-random.shuffle(pretrain_train_data)
-random.shuffle(pretrain_train_data)
-
-# balance the pretrain_train data:
-pretrain_train_img_paths_balanced = []
-pretrain_train_labels_balanced = []
-for (img_path, label) in pretrain_train_data:
-    if label == road_label:
-        pretrain_train_labels_balanced.append(label)
-        pretrain_train_img_paths_balanced.append(img_path)
-
-    else:
-        no_of_nonroads = pretrain_train_labels_balanced.count(nonroad_label)
-        if no_of_nonroads < no_of_roads:
-            pretrain_train_labels_balanced.append(label)
-            pretrain_train_img_paths_balanced.append(img_path)
-
-no_of_nonroads = pretrain_train_labels_balanced.count(nonroad_label)
-no_of_roads = len(pretrain_train_labels_balanced) - no_of_nonroads
-print "number of nonroads in pretrain_train after balancing: %d" % no_of_nonroads
-print "number of roads in pretrain_train after balancing: %d" % no_of_roads
-
-pretrain_train_data = zip(pretrain_train_img_paths_balanced, pretrain_train_labels_balanced)
-random.shuffle(pretrain_train_data)
-random.shuffle(pretrain_train_data)
-random.shuffle(pretrain_train_data)
-random.shuffle(pretrain_train_data)
-pretrain_train_img_paths, pretrain_train_labels = zip(*pretrain_train_data)
-
-# save the pretrain_train data to disk:
-cPickle.dump(pretrain_train_img_paths,
-            open(project_dir + "data/pretrain_train_img_paths.pkl", "w"))
-cPickle.dump(pretrain_train_labels,
-            open(project_dir + "data/pretrain_train_labels.pkl", "w"))
-print "number of pretrain_train imgs: %d" % len(pretrain_train_labels)
-
-# compute the mean pixel channels of the pretrain_train imgs:
-print "computing mean pixel channels of the pretrain_train imgs"
-no_of_pretrain_train_imgs = len(pretrain_train_img_paths)
-pretrain_mean_channels = np.zeros((3, ))
-for step, img_path in enumerate(pretrain_train_img_paths):
-    if step % 100 == 0:
-        print step
-
-    img = cv2.imread(img_path, -1)
-
-    img_mean_channels = np.mean(img, axis=0)
-    img_mean_channels = np.mean(img_mean_channels, axis=0)
-
-    pretrain_mean_channels += img_mean_channels
-
-pretrain_mean_channels = pretrain_mean_channels/float(no_of_pretrain_train_imgs)
-# # save to disk:
-cPickle.dump(pretrain_mean_channels, open(project_dir + "data/pretrain_mean_channels.pkl", "w"))
+# no_of_nonroads = pretrain_train_labels.count(nonroad_label)
+# no_of_roads = len(pretrain_train_labels) - no_of_nonroads
+# print "number of nonroads in pretrain_train before balancing: %d" % no_of_nonroads
+# print "number of roads in pretrain_train before balancing: %d" % no_of_roads
+#
+# pretrain_train_data = zip(pretrain_train_img_paths, pretrain_train_labels)
+# random.shuffle(pretrain_train_data)
+# random.shuffle(pretrain_train_data)
+# random.shuffle(pretrain_train_data)
+# random.shuffle(pretrain_train_data)
+#
+# # balance the pretrain_train data:
+# pretrain_train_img_paths_balanced = []
+# pretrain_train_labels_balanced = []
+# for (img_path, label) in pretrain_train_data:
+#     if label == road_label:
+#         pretrain_train_labels_balanced.append(label)
+#         pretrain_train_img_paths_balanced.append(img_path)
+#
+#     else:
+#         no_of_nonroads = pretrain_train_labels_balanced.count(nonroad_label)
+#         if no_of_nonroads < no_of_roads:
+#             pretrain_train_labels_balanced.append(label)
+#             pretrain_train_img_paths_balanced.append(img_path)
+#
+# no_of_nonroads = pretrain_train_labels_balanced.count(nonroad_label)
+# no_of_roads = len(pretrain_train_labels_balanced) - no_of_nonroads
+# print "number of nonroads in pretrain_train after balancing: %d" % no_of_nonroads
+# print "number of roads in pretrain_train after balancing: %d" % no_of_roads
+#
+# pretrain_train_data = zip(pretrain_train_img_paths_balanced, pretrain_train_labels_balanced)
+# random.shuffle(pretrain_train_data)
+# random.shuffle(pretrain_train_data)
+# random.shuffle(pretrain_train_data)
+# random.shuffle(pretrain_train_data)
+# pretrain_train_img_paths, pretrain_train_labels = zip(*pretrain_train_data)
+#
+# # save the pretrain_train data to disk:
+# cPickle.dump(pretrain_train_img_paths,
+#             open(project_dir + "data/pretrain_train_img_paths.pkl", "w"))
+# cPickle.dump(pretrain_train_labels,
+#             open(project_dir + "data/pretrain_train_labels.pkl", "w"))
+# print "number of pretrain_train imgs: %d" % len(pretrain_train_labels)
+#
+# # compute the mean pixel channels of the pretrain_train imgs:
+# print "computing mean pixel channels of the pretrain_train imgs"
+# no_of_pretrain_train_imgs = len(pretrain_train_img_paths)
+# pretrain_mean_channels = np.zeros((3, ))
+# for step, img_path in enumerate(pretrain_train_img_paths):
+#     if step % 100 == 0:
+#         print step
+#
+#     img = cv2.imread(img_path, -1)
+#
+#     img_mean_channels = np.mean(img, axis=0)
+#     img_mean_channels = np.mean(img_mean_channels, axis=0)
+#
+#     pretrain_mean_channels += img_mean_channels
+#
+# pretrain_mean_channels = pretrain_mean_channels/float(no_of_pretrain_train_imgs)
+# # # save to disk:
+# cPickle.dump(pretrain_mean_channels, open(project_dir + "data/pretrain_mean_channels.pkl", "w"))
 
 
 
@@ -311,8 +351,8 @@ cPickle.dump(class_weights, open(project_dir + "data/class_weights.pkl", "w"))
 
 
 
-pretrain_val_img_paths = []
-pretrain_val_labels = []
+# pretrain_val_img_paths = []
+# pretrain_val_labels = []
 
 val_img_paths = []
 val_trainId_label_paths = []
@@ -344,69 +384,69 @@ for dir_step, dir in enumerate(val_dirs):
         cv2.imwrite(trainId_label_path, trainId_label)
         val_trainId_label_paths.append(trainId_label_path)
 
-        gt_trainId = id_to_trainId_map_func(gt_img)
-        for col in range(8):
-            for row in range(8):
-                img_crop = img[row*128:(row + 1)*128, col*256:(col + 1)*256]
-                gt_crop = gt_trainId[row*128:(row + 1)*128, col*256:(col + 1)*256]
+        # gt_trainId = id_to_trainId_map_func(gt_img)
+        # for col in range(8):
+        #     for row in range(8):
+        #         img_crop = img[row*128:(row + 1)*128, col*256:(col + 1)*256]
+        #         gt_crop = gt_trainId[row*128:(row + 1)*128, col*256:(col + 1)*256]
+        #
+        #         for trainId in range(no_of_classes):
+        #             trainId_mask = np.equal(gt_crop, trainId)
+        #             trainId_count = np.sum(trainId_mask)
+        #             trainId_prop = float(trainId_count)/float(128*256)
+        #             if trainId_prop > 0.95:
+        #                 img_crop_path = project_dir + "data/" + img_id + "_" + str(row) + "_" + str(col) + ".png"
+        #                 cv2.imwrite(img_crop_path, img_crop)
+        #                 pretrain_val_img_paths.append(img_crop_path)
+        #                 pretrain_val_labels.append(trainId)
+        #                 break
 
-                for trainId in range(no_of_classes):
-                    trainId_mask = np.equal(gt_crop, trainId)
-                    trainId_count = np.sum(trainId_mask)
-                    trainId_prop = float(trainId_count)/float(128*256)
-                    if trainId_prop > 0.95:
-                        img_crop_path = project_dir + "data/" + img_id + "_" + str(row) + "_" + str(col) + ".png"
-                        cv2.imwrite(img_crop_path, img_crop)
-                        pretrain_val_img_paths.append(img_crop_path)
-                        pretrain_val_labels.append(trainId)
-                        break
-
-no_of_nonroads = pretrain_val_labels.count(nonroad_label)
-no_of_roads = len(pretrain_val_labels) - no_of_nonroads
-print "number of nonroads in pretrain_val before balancing: %d" % no_of_nonroads
-print "number of roads in pretrain_val before balancing: %d" % no_of_roads
-
-pretrain_val_data = zip(pretrain_val_img_paths, pretrain_val_labels)
-random.shuffle(pretrain_val_data)
-random.shuffle(pretrain_val_data)
-random.shuffle(pretrain_val_data)
-random.shuffle(pretrain_val_data)
-
-# balance the pretrain_val data:
-max_no_of_roads = min(2000, no_of_roads)
-pretrain_val_img_paths_balanced = []
-pretrain_val_labels_balanced = []
-for (img_path, label) in pretrain_val_data:
-    no_of_roads = pretrain_val_labels_balanced.count(road_label)
-    no_of_nonroads = pretrain_val_labels_balanced.count(nonroad_label)
-
-    if label == road_label:
-        if no_of_roads < max_no_of_roads:
-            pretrain_val_labels_balanced.append(label)
-            pretrain_val_img_paths_balanced.append(img_path)
-    else:
-        if no_of_nonroads < max_no_of_roads:
-            pretrain_val_labels_balanced.append(label)
-            pretrain_val_img_paths_balanced.append(img_path)
-
-no_of_nonroads = pretrain_val_labels_balanced.count(nonroad_label)
-no_of_roads = len(pretrain_val_labels_balanced) - no_of_nonroads
-print "number of nonroads in pretrain_val after balancing: %d" % no_of_nonroads
-print "number of roads in pretrain_val after balancing: %d" % no_of_roads
-
-pretrain_val_data = zip(pretrain_val_img_paths_balanced, pretrain_val_labels_balanced)
-random.shuffle(pretrain_val_data)
-random.shuffle(pretrain_val_data)
-random.shuffle(pretrain_val_data)
-random.shuffle(pretrain_val_data)
-pretrain_val_img_paths, pretrain_val_labels = zip(*pretrain_val_data)
-
-# save the pretrain_val data to disk:
-cPickle.dump(pretrain_val_img_paths,
-            open(project_dir + "data/pretrain_val_img_paths.pkl", "w"))
-cPickle.dump(pretrain_val_labels,
-            open(project_dir + "data/pretrain_val_labels.pkl", "w"))
-print "number of pretrain_val imgs: %d" % len(pretrain_val_labels)
+# no_of_nonroads = pretrain_val_labels.count(nonroad_label)
+# no_of_roads = len(pretrain_val_labels) - no_of_nonroads
+# print "number of nonroads in pretrain_val before balancing: %d" % no_of_nonroads
+# print "number of roads in pretrain_val before balancing: %d" % no_of_roads
+#
+# pretrain_val_data = zip(pretrain_val_img_paths, pretrain_val_labels)
+# random.shuffle(pretrain_val_data)
+# random.shuffle(pretrain_val_data)
+# random.shuffle(pretrain_val_data)
+# random.shuffle(pretrain_val_data)
+#
+# # balance the pretrain_val data:
+# max_no_of_roads = min(2000, no_of_roads)
+# pretrain_val_img_paths_balanced = []
+# pretrain_val_labels_balanced = []
+# for (img_path, label) in pretrain_val_data:
+#     no_of_roads = pretrain_val_labels_balanced.count(road_label)
+#     no_of_nonroads = pretrain_val_labels_balanced.count(nonroad_label)
+#
+#     if label == road_label:
+#         if no_of_roads < max_no_of_roads:
+#             pretrain_val_labels_balanced.append(label)
+#             pretrain_val_img_paths_balanced.append(img_path)
+#     else:
+#         if no_of_nonroads < max_no_of_roads:
+#             pretrain_val_labels_balanced.append(label)
+#             pretrain_val_img_paths_balanced.append(img_path)
+#
+# no_of_nonroads = pretrain_val_labels_balanced.count(nonroad_label)
+# no_of_roads = len(pretrain_val_labels_balanced) - no_of_nonroads
+# print "number of nonroads in pretrain_val after balancing: %d" % no_of_nonroads
+# print "number of roads in pretrain_val after balancing: %d" % no_of_roads
+#
+# pretrain_val_data = zip(pretrain_val_img_paths_balanced, pretrain_val_labels_balanced)
+# random.shuffle(pretrain_val_data)
+# random.shuffle(pretrain_val_data)
+# random.shuffle(pretrain_val_data)
+# random.shuffle(pretrain_val_data)
+# pretrain_val_img_paths, pretrain_val_labels = zip(*pretrain_val_data)
+#
+# # save the pretrain_val data to disk:
+# cPickle.dump(pretrain_val_img_paths,
+#             open(project_dir + "data/pretrain_val_img_paths.pkl", "w"))
+# cPickle.dump(pretrain_val_labels,
+#             open(project_dir + "data/pretrain_val_labels.pkl", "w"))
+# print "number of pretrain_val imgs: %d" % len(pretrain_val_labels)
 
 
 

@@ -17,18 +17,17 @@ class ENet_model(object):
 
         self.model_id = model_id
 
-        #self.logs_dir = "/home/fregu856/segmentation/training_logs/"
-        self.logs_dir = "/root/segmentation/training_logs/"
+        #self.project_dir = "/home/fregu856/segmentation/"
+        self.project_dir = "/root/segmentation/"
+
+        self.logs_dir = self.project_dir + "training_logs/"
 
         if not os.path.exists(self.logs_dir):
             os.makedirs(self.logs_dir)
 
-        self.no_of_classes = 2
+        self.no_of_classes = 20
         self.class_weights = cPickle.load(open("data/class_weights.pkl"))
 
-        self.initial_lr = 1e-5 # (am I even using this?)
-        self.decay_steps =  3000 # (am I even using this?)
-        self.lr_decay_rate = 0.96 # (am I even using this?)
         self.img_height = img_height
         self.img_width = img_width
         self.batch_size = batch_size

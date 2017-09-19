@@ -16,7 +16,7 @@ project_dir = "/root/segmentation/"
 
 data_dir = project_dir + "data/"
 
-model_id = "road_nonroad_4" # (change this to not overwrite all log data when you train the model)
+model_id = "1" # (change this to not overwrite all log data when you train the model)
 batch_size = 4
 img_height = 512
 img_width = 1024
@@ -88,9 +88,11 @@ def evaluate_on_val():
             predictions = np.argmax(logits, axis=3)
             for i in range(batch_size):
                 pred_img = predictions[i]
-                label_img_color = label_img_to_color(pred_img)
                 cv2.imwrite((model.debug_imgs_dir + "val_" + str(epoch) + "_" +
-                            str(step) + "_" + str(i) + ".png"), label_img_color)
+                            str(step) + "_" + str(i) + ".png"), pred_img)
+                # label_img_color = label_img_to_color(pred_img)
+                # cv2.imwrite((model.debug_imgs_dir + "val_" + str(epoch) + "_" +
+                #             str(step) + "_" + str(i) + ".png"), label_img_color)
 
     val_loss = np.mean(val_batch_losses)
     return val_loss
@@ -147,9 +149,9 @@ with tf.Session() as sess:
     sess.run(init)
 
     # restore the pretrained encoder:
-    saver.restore(sess, project_dir + "training_logs/best_pretrain_model/model_pretrain_1_epoch_9.ckpt")
+    #saver.restore(sess, project_dir + "training_logs/best_pretrain_model/model_pretrain_1_epoch_9.ckpt")
 
-    #saver.restore(sess, project_dir + "training_logs/model_road_nonroad_2/checkpoints/model_road_nonroad_2_epoch_1.ckpt")
+    #saver.restore(sess, project_dir + "training_logs/model_road_nonroad_4/checkpoints/model_road_nonroad_4_epoch_6.ckpt")
 
     for epoch in range(no_of_epochs):
         print "###########################"
@@ -173,8 +175,9 @@ with tf.Session() as sess:
 
             predictions = np.argmax(logits, axis=3)
             pred_img = predictions[0]
-            label_img_color = label_img_to_color(pred_img)
-            cv2.imwrite("test.png", label_img_color)
+            cv2.imwrite("test.png", pred_img)
+            # label_img_color = label_img_to_color(pred_img)
+            # cv2.imwrite("test.png", label_img_color)
 
             print "step: %d/%d, training batch loss: %g" % (step+1, no_of_batches, batch_loss)
 
