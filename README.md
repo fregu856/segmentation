@@ -29,3 +29,12 @@ number of pretrain_val imgs: 4000
 number of epochs of pretraining: XXXXXXXXXXXX
 
 plot of train/val loss in pretraining: XXXXXXXXXXXX
+
+
+
+*****
+
+zip -r demo_0.zip cityscapes/leftImg8bit/demoVideo/stuttgart_00
+
+scp amrkri@kent.s2.chalmers.se:/mnt/data/demo_0.zip demo_0.zip
+
