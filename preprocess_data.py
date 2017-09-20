@@ -515,3 +515,38 @@ cPickle.dump(train_trainId_label_paths,
 
 no_of_train_imgs = len(train_img_paths)
 print "number of train imgs after augmentation: %d " % no_of_train_imgs
+
+
+
+
+
+
+
+
+
+
+
+# read, resize and save frames from a private dash cam video (to qualitatively
+# test the model output after training):
+cap = cv2.VideoCapture(data_dir + "trollhattan_video.mp4")
+counter = 0
+while True:
+    # capture frame-by-frame:
+    ret, frame = cap.read()
+    if counter % 3 == 0 and ((counter > 34600 and counter < 37030) or (counter > 27500 and counter < 29370)):
+        print counter
+
+        # resize by cropping the bottom left part of the image of size
+        # (new_img_height, new_img_width):
+        #frame = frame[new_img_height:, :new_img_width]
+        frame = cv2.resize(frame, (new_img_width, new_img_height))
+
+        # img = cv2.resize(img, (img_width, int(1024*(float(img_width)/float(2048)))))
+        # img = img[310-img_height/2:310+img_height/2, :]
+
+        frame_path = data_dir + "trollhattan_video/" + str(counter) + ".png"
+        cv2.imwrite(frame_path, frame)
+
+    counter += 1
+    if counter > 40000:
+        break
