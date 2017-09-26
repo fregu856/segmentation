@@ -6,12 +6,10 @@ import tensorflow as tf
 from collections import namedtuple
 import random
 
-# project_dir = "/home/fregu856/segmentation/"
-# data_dir = "/home/fregu856/data/"
 project_dir = "/root/segmentation/"
 data_dir = "/root/data/"
 
-# (this is taken from the official Cityscapes scripts:)
+# (NOTE! this is taken from the official Cityscapes scripts:)
 Label = namedtuple( 'Label' , [
 
     'name'        , # The identifier of this label, e.g. 'car', 'person', ... .
@@ -48,47 +46,7 @@ Label = namedtuple( 'Label' , [
     'color'       , # The color of this label
     ] )
 
-# # (this is taken from the official Cityscapes scripts:)
-# labels = [
-#     #       name                     id    trainId   category            catId     hasInstances   ignoreInEval   color
-#     Label(  'unlabeled'            ,  0 ,      1 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
-#     Label(  'ego vehicle'          ,  1 ,      1 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
-#     Label(  'rectification border' ,  2 ,      1 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
-#     Label(  'out of roi'           ,  3 ,      1 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
-#     Label(  'static'               ,  4 ,      1 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
-#     Label(  'dynamic'              ,  5 ,      1 , 'void'            , 0       , False        , True         , (111, 74,  0) ),
-#     Label(  'ground'               ,  6 ,      1 , 'void'            , 0       , False        , True         , ( 81,  0, 81) ),
-#     Label(  'road'                 ,  7 ,        0 , 'flat'            , 1       , False        , False        , (128, 64,128) ),
-#     Label(  'sidewalk'             ,  8 ,        1 , 'flat'            , 1       , False        , False        , (244, 35,232) ),
-#     Label(  'parking'              ,  9 ,      1 , 'flat'            , 1       , False        , True         , (250,170,160) ),
-#     Label(  'rail track'           , 10 ,      1 , 'flat'            , 1       , False        , True         , (230,150,140) ),
-#     Label(  'building'             , 11 ,        1 , 'construction'    , 2       , False        , False        , ( 70, 70, 70) ),
-#     Label(  'wall'                 , 12 ,        1 , 'construction'    , 2       , False        , False        , (102,102,156) ),
-#     Label(  'fence'                , 13 ,        1 , 'construction'    , 2       , False        , False        , (190,153,153) ),
-#     Label(  'guard rail'           , 14 ,      1 , 'construction'    , 2       , False        , True         , (180,165,180) ),
-#     Label(  'bridge'               , 15 ,      1 , 'construction'    , 2       , False        , True         , (150,100,100) ),
-#     Label(  'tunnel'               , 16 ,      1 , 'construction'    , 2       , False        , True         , (150,120, 90) ),
-#     Label(  'pole'                 , 17 ,        1 , 'object'          , 3       , False        , False        , (153,153,153) ),
-#     Label(  'polegroup'            , 18 ,      1 , 'object'          , 3       , False        , True         , (153,153,153) ),
-#     Label(  'traffic light'        , 19 ,        1 , 'object'          , 3       , False        , False        , (250,170, 30) ),
-#     Label(  'traffic sign'         , 20 ,        1 , 'object'          , 3       , False        , False        , (220,220,  0) ),
-#     Label(  'vegetation'           , 21 ,        1 , 'nature'          , 4       , False        , False        , (107,142, 35) ),
-#     Label(  'terrain'              , 22 ,        1 , 'nature'          , 4       , False        , False        , (152,251,152) ),
-#     Label(  'sky'                  , 23 ,       1 , 'sky'             , 5       , False        , False        , ( 70,130,180) ),
-#     Label(  'person'               , 24 ,       1 , 'human'           , 6       , True         , False        , (220, 20, 60) ),
-#     Label(  'rider'                , 25 ,       1 , 'human'           , 6       , True         , False        , (255,  0,  0) ),
-#     Label(  'car'                  , 26 ,       1 , 'vehicle'         , 7       , True         , False        , (  0,  0,142) ),
-#     Label(  'truck'                , 27 ,       1 , 'vehicle'         , 7       , True         , False        , (  0,  0, 70) ),
-#     Label(  'bus'                  , 28 ,       1 , 'vehicle'         , 7       , True         , False        , (  0, 60,100) ),
-#     Label(  'caravan'              , 29 ,      1 , 'vehicle'         , 7       , True         , True         , (  0,  0, 90) ),
-#     Label(  'trailer'              , 30 ,      1 , 'vehicle'         , 7       , True         , True         , (  0,  0,110) ),
-#     Label(  'train'                , 31 ,       1 , 'vehicle'         , 7       , True         , False        , (  0, 80,100) ),
-#     Label(  'motorcycle'           , 32 ,       1 , 'vehicle'         , 7       , True         , False        , (  0,  0,230) ),
-#     Label(  'bicycle'              , 33 ,       1 , 'vehicle'         , 7       , True         , False        , (119, 11, 32) ),
-#     Label(  'license plate'        , -1 ,       -1 , 'vehicle'         , 7       , False        , True         , (  0,  0,142) ),
-# ]
-
-# (this is taken from the official Cityscapes scripts)
+# (NOTE! this is taken from the official Cityscapes scripts:)
 labels = [
     #       name                     id    trainId   category            catId     hasInstances   ignoreInEval   color
     Label(  'unlabeled'            ,  0 ,      19 , 'void'            , 0       , False        , True         , (  0,  0,  0) ),
@@ -128,25 +86,20 @@ labels = [
     Label(  'license plate'        , -1 ,       -1 , 'vehicle'         , 7       , False        , True         , (  0,  0,142) ),
 ]
 
-# road_label = 0
-# nonroad_label = 1
-
-id_to_class = {label.id: label.name for label in labels}
-
+# create a function mapping id to trainId:
 id_to_trainId = {label.id: label.trainId for label in labels}
 id_to_trainId_map_func = np.vectorize(id_to_trainId.get)
 
-original_img_height = 1024
-original_img_width = 2048
-new_img_height = 512
-new_img_width = 1024
-no_of_classes = 20
+new_img_height = 512 # (the height all images fed to the model will be resized to)
+new_img_width = 1024 # (the width all images fed to the model will be resized to)
+no_of_classes = 20 # (number of object classes (road, sidewalk, car etc.))
 
 cityscapes_dir = data_dir + "cityscapes/"
 
 train_imgs_dir = cityscapes_dir + "leftImg8bit/train/"
-val_imgs_dir = cityscapes_dir + "leftImg8bit/val/"
 train_gt_dir = cityscapes_dir + "gtFine/train/"
+
+val_imgs_dir = cityscapes_dir + "leftImg8bit/val/"
 val_gt_dir = cityscapes_dir + "gtFine/val/"
 
 train_dirs = ["jena/", "zurich/", "weimar/", "ulm/", "tubingen/", "stuttgart/",
@@ -154,11 +107,9 @@ train_dirs = ["jena/", "zurich/", "weimar/", "ulm/", "tubingen/", "stuttgart/",
             "hamburg/", "erfurt/", "dusseldorf/", "darmstadt/", "cologne/",
             "bremen/", "bochum/", "aachen/"]
 val_dirs = ["frankfurt/", "munster/", "lindau/"]
-# train_dirs = ["jena/"]
-# val_dirs = ["frankfurt/"]
 
-# pretrain_train_img_paths = []
-# pretrain_train_labels = []
+
+# get the path to all training images and their corresponding label image:
 train_img_paths = []
 train_trainId_label_paths = []
 for dir_step, dir in enumerate(train_dirs):
@@ -167,130 +118,44 @@ for dir_step, dir in enumerate(train_dirs):
     file_names = os.listdir(img_dir)
     for step, file_name in enumerate(file_names):
         if step % 10 == 0:
-            print "train dir %d/%d, step %d/%d" % (dir_step, len(train_dirs)-1, step, len(file_names)-1)
+            print ("train dir %d/%d, step %d/%d" % (dir_step, len(train_dirs)-1,
+                        step, len(file_names)-1))
 
-        img_path = img_dir + file_name
-        img = cv2.imread(img_path, -1)
         img_id = file_name.split("_left")[0]
 
+        # read the image:
+        img_path = img_dir + file_name
+        img = cv2.imread(img_path, -1)
+
+        # resize the image without interpolation (want the image to still match
+        # the corresponding label image which we reisize below) and save to
+        # project_dir/data:
         img_small = cv2.resize(img, (new_img_width, new_img_height),
                     interpolation=cv2.INTER_NEAREST)
         img_small_path = project_dir + "data/" + img_id + ".png"
         cv2.imwrite(img_small_path, img_small)
         train_img_paths.append(img_small_path)
 
+        # read and resize the corresponding label image without interpolation
+        # (want the resulting image to still only contain pixel values
+        # corresponding to an object class):
         gt_img_path = train_gt_dir + dir + img_id + "_gtFine_labelIds.png"
         gt_img = cv2.imread(gt_img_path, -1)
         gt_img_small = cv2.resize(gt_img, (new_img_width, new_img_height),
                         interpolation=cv2.INTER_NEAREST)
 
+        # convert the label image from id to trainId pixel values:
         id_label = gt_img_small
         trainId_label = id_to_trainId_map_func(id_label)
 
+        # save the label image to project_dir/data:
         trainId_label_path = project_dir + "data/" + img_id + "_trainId_label.png"
         cv2.imwrite(trainId_label_path, trainId_label)
         train_trainId_label_paths.append(trainId_label_path)
 
 
-
-
-    #     gt_trainId = id_to_trainId_map_func(gt_img)
-    #     for col in range(8):
-    #         for row in range(8):
-    #             img_crop = img[row*128:(row + 1)*128, col*256:(col + 1)*256]
-    #             gt_crop = gt_trainId[row*128:(row + 1)*128, col*256:(col + 1)*256]
-    #
-    #             for trainId in range(no_of_classes):
-    #                 trainId_mask = np.equal(gt_crop, trainId)
-    #                 trainId_count = np.sum(trainId_mask)
-    #                 trainId_prop = float(trainId_count)/float(128*256)
-    #                 if trainId_prop > 0.95:
-    #                     img_crop_path = project_dir + "data/" + img_id + "_" + str(row) + "_" + str(col) + ".png"
-    #                     cv2.imwrite(img_crop_path, img_crop)
-    #                     pretrain_train_img_paths.append(img_crop_path)
-    #                     pretrain_train_labels.append(trainId)
-    #                     break
-    # no_of_nonroads = pretrain_train_labels.count(nonroad_label)
-    # no_of_roads = len(pretrain_train_labels) - no_of_nonroads
-    # print "number of nonroads: %d" % no_of_nonroads
-    # print "number of roads: %d" % no_of_roads
-
-# no_of_nonroads = pretrain_train_labels.count(nonroad_label)
-# no_of_roads = len(pretrain_train_labels) - no_of_nonroads
-# print "number of nonroads in pretrain_train before balancing: %d" % no_of_nonroads
-# print "number of roads in pretrain_train before balancing: %d" % no_of_roads
-#
-# pretrain_train_data = zip(pretrain_train_img_paths, pretrain_train_labels)
-# random.shuffle(pretrain_train_data)
-# random.shuffle(pretrain_train_data)
-# random.shuffle(pretrain_train_data)
-# random.shuffle(pretrain_train_data)
-#
-# # balance the pretrain_train data:
-# pretrain_train_img_paths_balanced = []
-# pretrain_train_labels_balanced = []
-# for (img_path, label) in pretrain_train_data:
-#     if label == road_label:
-#         pretrain_train_labels_balanced.append(label)
-#         pretrain_train_img_paths_balanced.append(img_path)
-#
-#     else:
-#         no_of_nonroads = pretrain_train_labels_balanced.count(nonroad_label)
-#         if no_of_nonroads < no_of_roads:
-#             pretrain_train_labels_balanced.append(label)
-#             pretrain_train_img_paths_balanced.append(img_path)
-#
-# no_of_nonroads = pretrain_train_labels_balanced.count(nonroad_label)
-# no_of_roads = len(pretrain_train_labels_balanced) - no_of_nonroads
-# print "number of nonroads in pretrain_train after balancing: %d" % no_of_nonroads
-# print "number of roads in pretrain_train after balancing: %d" % no_of_roads
-#
-# pretrain_train_data = zip(pretrain_train_img_paths_balanced, pretrain_train_labels_balanced)
-# random.shuffle(pretrain_train_data)
-# random.shuffle(pretrain_train_data)
-# random.shuffle(pretrain_train_data)
-# random.shuffle(pretrain_train_data)
-# pretrain_train_img_paths, pretrain_train_labels = zip(*pretrain_train_data)
-#
-# # save the pretrain_train data to disk:
-# cPickle.dump(pretrain_train_img_paths,
-#             open(project_dir + "data/pretrain_train_img_paths.pkl", "w"))
-# cPickle.dump(pretrain_train_labels,
-#             open(project_dir + "data/pretrain_train_labels.pkl", "w"))
-# print "number of pretrain_train imgs: %d" % len(pretrain_train_labels)
-#
-# # compute the mean pixel channels of the pretrain_train imgs:
-# print "computing mean pixel channels of the pretrain_train imgs"
-# no_of_pretrain_train_imgs = len(pretrain_train_img_paths)
-# pretrain_mean_channels = np.zeros((3, ))
-# for step, img_path in enumerate(pretrain_train_img_paths):
-#     if step % 100 == 0:
-#         print step
-#
-#     img = cv2.imread(img_path, -1)
-#
-#     img_mean_channels = np.mean(img, axis=0)
-#     img_mean_channels = np.mean(img_mean_channels, axis=0)
-#
-#     pretrain_mean_channels += img_mean_channels
-#
-# pretrain_mean_channels = pretrain_mean_channels/float(no_of_pretrain_train_imgs)
-# # # save to disk:
-# cPickle.dump(pretrain_mean_channels, open(project_dir + "data/pretrain_mean_channels.pkl", "w"))
-
-
-
-
-
-
-
-
-
-
-
-
-# compute the mean pixel channels of the train imgs:
-print "computing mean pixel channels of the train imgs"
+# compute the mean color channels of the train imgs:
+print "computing mean color channels of the train imgs"
 no_of_train_imgs = len(train_img_paths)
 mean_channels = np.zeros((3, ))
 for step, img_path in enumerate(train_img_paths):
@@ -305,15 +170,9 @@ for step, img_path in enumerate(train_img_paths):
     mean_channels += img_mean_channels
 
 mean_channels = mean_channels/float(no_of_train_imgs)
+
 # # save to disk:
 cPickle.dump(mean_channels, open(project_dir + "data/mean_channels.pkl", "w"))
-
-
-
-
-
-
-
 
 
 # compute the class weights:
@@ -322,17 +181,24 @@ trainId_to_count = {}
 for trainId in range(no_of_classes):
     trainId_to_count[trainId] = 0
 
+# # get the total number of pixels in all train labels that are of each
+# # object class:
 for step, trainId_label_path in enumerate(train_trainId_label_paths):
-    print step
+    if step % 100 == 0:
+        print step
 
+    # read the label image:
     trainId_label = cv2.imread(trainId_label_path, -1)
 
     for trainId in range(no_of_classes):
+        # count how many pixels in the label image are of object class trainId:
         trainId_mask = np.equal(trainId_label, trainId)
         label_trainId_count = np.sum(trainId_mask)
 
+        # add to the total count:
         trainId_to_count[trainId] += label_trainId_count
 
+# # compute the class weights according to the paper:
 class_weights = []
 total_count = sum(trainId_to_count.values())
 for trainId, count in trainId_to_count.items():
@@ -340,20 +206,11 @@ for trainId, count in trainId_to_count.items():
     trainId_weight = 1/np.log(1.02 + trainId_prob)
     class_weights.append(trainId_weight)
 
-print class_weights
+# # save to disk:
 cPickle.dump(class_weights, open(project_dir + "data/class_weights.pkl", "w"))
 
 
-
-
-
-
-
-
-
-# pretrain_val_img_paths = []
-# pretrain_val_labels = []
-
+# get the path to all validation images and their corresponding label image:
 val_img_paths = []
 val_trainId_label_paths = []
 for dir_step, dir in enumerate(val_dirs):
@@ -362,97 +219,42 @@ for dir_step, dir in enumerate(val_dirs):
     file_names = os.listdir(img_dir)
     for step, file_name in enumerate(file_names):
         if step % 10 == 0:
-            print "val dir %d/%d, step %d/%d" % (dir_step, len(val_dirs)-1, step, len(file_names)-1)
+            print "val dir %d/%d, step %d/%d" % (dir_step, len(val_dirs)-1,
+                        step, len(file_names)-1)
 
-        img_path = img_dir + file_name
-        img = cv2.imread(img_path, -1)
         img_id = file_name.split("_left")[0]
 
-        img_small = cv2.resize(img, (new_img_width, new_img_height), interpolation=cv2.INTER_NEAREST)
+        # read the image:
+        img_path = img_dir + file_name
+        img = cv2.imread(img_path, -1)
+
+        # resize the image without interpolation (want the image to still match
+        # the corresponding label image which we reisize below) and save to
+        # project_dir/data:
+        img_small = cv2.resize(img, (new_img_width, new_img_height),
+                    interpolation=cv2.INTER_NEAREST)
         img_small_path = project_dir + "data/" + img_id + ".png"
         cv2.imwrite(img_small_path, img_small)
         val_img_paths.append(img_small_path)
 
+        # read and resize the corresponding label image without interpolation
+        # (want the resulting image to still only contain pixel values
+        # corresponding to an object class):
         gt_img_path = val_gt_dir + dir + img_id + "_gtFine_labelIds.png"
         gt_img = cv2.imread(gt_img_path, -1)
-        gt_img_small = cv2.resize(gt_img, (new_img_width, new_img_height), interpolation=cv2.INTER_NEAREST)
+        gt_img_small = cv2.resize(gt_img, (new_img_width, new_img_height),
+                    interpolation=cv2.INTER_NEAREST)
 
+        # convert the label image from id to trainId pixel values:
         id_label = gt_img_small
         trainId_label = id_to_trainId_map_func(id_label)
 
+        # save the label image to project_dir/data:
         trainId_label_path = project_dir + "data/" + img_id + "_trainId_label.png"
         cv2.imwrite(trainId_label_path, trainId_label)
         val_trainId_label_paths.append(trainId_label_path)
 
-        # gt_trainId = id_to_trainId_map_func(gt_img)
-        # for col in range(8):
-        #     for row in range(8):
-        #         img_crop = img[row*128:(row + 1)*128, col*256:(col + 1)*256]
-        #         gt_crop = gt_trainId[row*128:(row + 1)*128, col*256:(col + 1)*256]
-        #
-        #         for trainId in range(no_of_classes):
-        #             trainId_mask = np.equal(gt_crop, trainId)
-        #             trainId_count = np.sum(trainId_mask)
-        #             trainId_prop = float(trainId_count)/float(128*256)
-        #             if trainId_prop > 0.95:
-        #                 img_crop_path = project_dir + "data/" + img_id + "_" + str(row) + "_" + str(col) + ".png"
-        #                 cv2.imwrite(img_crop_path, img_crop)
-        #                 pretrain_val_img_paths.append(img_crop_path)
-        #                 pretrain_val_labels.append(trainId)
-        #                 break
-
-# no_of_nonroads = pretrain_val_labels.count(nonroad_label)
-# no_of_roads = len(pretrain_val_labels) - no_of_nonroads
-# print "number of nonroads in pretrain_val before balancing: %d" % no_of_nonroads
-# print "number of roads in pretrain_val before balancing: %d" % no_of_roads
-#
-# pretrain_val_data = zip(pretrain_val_img_paths, pretrain_val_labels)
-# random.shuffle(pretrain_val_data)
-# random.shuffle(pretrain_val_data)
-# random.shuffle(pretrain_val_data)
-# random.shuffle(pretrain_val_data)
-#
-# # balance the pretrain_val data:
-# max_no_of_roads = min(2000, no_of_roads)
-# pretrain_val_img_paths_balanced = []
-# pretrain_val_labels_balanced = []
-# for (img_path, label) in pretrain_val_data:
-#     no_of_roads = pretrain_val_labels_balanced.count(road_label)
-#     no_of_nonroads = pretrain_val_labels_balanced.count(nonroad_label)
-#
-#     if label == road_label:
-#         if no_of_roads < max_no_of_roads:
-#             pretrain_val_labels_balanced.append(label)
-#             pretrain_val_img_paths_balanced.append(img_path)
-#     else:
-#         if no_of_nonroads < max_no_of_roads:
-#             pretrain_val_labels_balanced.append(label)
-#             pretrain_val_img_paths_balanced.append(img_path)
-#
-# no_of_nonroads = pretrain_val_labels_balanced.count(nonroad_label)
-# no_of_roads = len(pretrain_val_labels_balanced) - no_of_nonroads
-# print "number of nonroads in pretrain_val after balancing: %d" % no_of_nonroads
-# print "number of roads in pretrain_val after balancing: %d" % no_of_roads
-#
-# pretrain_val_data = zip(pretrain_val_img_paths_balanced, pretrain_val_labels_balanced)
-# random.shuffle(pretrain_val_data)
-# random.shuffle(pretrain_val_data)
-# random.shuffle(pretrain_val_data)
-# random.shuffle(pretrain_val_data)
-# pretrain_val_img_paths, pretrain_val_labels = zip(*pretrain_val_data)
-#
-# # save the pretrain_val data to disk:
-# cPickle.dump(pretrain_val_img_paths,
-#             open(project_dir + "data/pretrain_val_img_paths.pkl", "w"))
-# cPickle.dump(pretrain_val_labels,
-#             open(project_dir + "data/pretrain_val_labels.pkl", "w"))
-# print "number of pretrain_val imgs: %d" % len(pretrain_val_labels)
-
-
-
-
-
-# save the val data to disk:
+# # save the validation data to disk:
 cPickle.dump(val_trainId_label_paths,
             open(project_dir + "data/val_trainId_label_paths.pkl", "w"))
 cPickle.dump(val_img_paths,
@@ -461,15 +263,7 @@ cPickle.dump(val_img_paths,
 # val_img_paths = cPickle.load(open(project_dir + "data/val_img_paths.pkl"))
 
 
-
-
-
-
-
-
-
 # augment the train data by flipping all train imgs:
-print "augmenting train"
 no_of_train_imgs = len(train_img_paths)
 print "number of train imgs before augmentation: %d " % no_of_train_imgs
 
@@ -482,28 +276,32 @@ for step, (img_path, label_path) in enumerate(zip(train_img_paths, train_trainId
     augmented_train_img_paths.append(img_path)
     augmented_train_trainId_label_paths.append(label_path)
 
+    # read the image:
     img = cv2.imread(img_path, -1)
 
+    # flip the image and save to project_dir/data:
     img_flipped = cv2.flip(img, 1)
     img_flipped_path = img_path.split(".png")[0] + "_flipped.png"
     cv2.imwrite(img_flipped_path, img_flipped)
     augmented_train_img_paths.append(img_flipped_path)
 
+    # read the corresponding label image:
     label_img = cv2.imread(label_path, -1)
 
+    # flip the label image and save to project_dir/data:
     label_img_flipped = cv2.flip(label_img, 1)
     label_img_flipped_path = label_path.split(".png")[0] + "_flipped.png"
     cv2.imwrite(label_img_flipped_path, label_img_flipped)
     augmented_train_trainId_label_paths.append(label_img_flipped_path)
 
-# randomly shuffle the augmented train data:
+# # randomly shuffle the augmented train data:
 augmented_train_data = zip(augmented_train_img_paths, augmented_train_trainId_label_paths)
 random.shuffle(augmented_train_data)
 random.shuffle(augmented_train_data)
 random.shuffle(augmented_train_data)
 random.shuffle(augmented_train_data)
 
-# save the augmented train data to disk:
+# # save the augmented train data to disk:
 train_data = augmented_train_data
 train_img_paths, train_trainId_label_paths = zip(*train_data)
 cPickle.dump(train_img_paths,
@@ -515,38 +313,3 @@ cPickle.dump(train_trainId_label_paths,
 
 no_of_train_imgs = len(train_img_paths)
 print "number of train imgs after augmentation: %d " % no_of_train_imgs
-
-
-
-
-
-
-
-
-
-
-
-# read, resize and save frames from a private dash cam video (to qualitatively
-# test the model output after training):
-cap = cv2.VideoCapture(data_dir + "trollhattan_video.mp4")
-counter = 0
-while True:
-    # capture frame-by-frame:
-    ret, frame = cap.read()
-    if counter % 3 == 0 and ((counter > 34600 and counter < 37030) or (counter > 27500 and counter < 29370)):
-        print counter
-
-        # resize by cropping the bottom left part of the image of size
-        # (new_img_height, new_img_width):
-        #frame = frame[new_img_height:, :new_img_width]
-        frame = cv2.resize(frame, (new_img_width, new_img_height))
-
-        # img = cv2.resize(img, (img_width, int(1024*(float(img_width)/float(2048)))))
-        # img = img[310-img_height/2:310+img_height/2, :]
-
-        frame_path = data_dir + "trollhattan_video/" + str(counter) + ".png"
-        cv2.imwrite(frame_path, frame)
-
-    counter += 1
-    if counter > 40000:
-        break
