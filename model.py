@@ -1,4 +1,3 @@
-import numpy as np
 import tensorflow as tf
 import os
 import cPickle
@@ -6,50 +5,42 @@ import cPickle
 from utilities import PReLU, spatial_dropout, max_unpool
 
 class ENet_model(object):
-    """
-    - DOES:
-    """
 
     def __init__(self, model_id, img_height=512, img_width=1024, batch_size=4):
-        """
-        - DOES:
-        """
-
         self.model_id = model_id
 
-        #self.project_dir = "/home/fregu856/segmentation/"
         self.project_dir = "/root/segmentation/"
 
         self.logs_dir = self.project_dir + "training_logs/"
-
         if not os.path.exists(self.logs_dir):
             os.makedirs(self.logs_dir)
+
+        self.batch_size = batch_size
+        self.img_height = img_height
+        self.img_width = img_width
 
         self.no_of_classes = 20
         self.class_weights = cPickle.load(open("data/class_weights.pkl"))
 
-        self.img_height = img_height
-        self.img_width = img_width
-        self.batch_size = batch_size
-
         self.wd = 2e-4 # (weight decay)
+        self.lr = 5e-4 # (learning rate)
 
-        #
+        # create all dirs for storing checkpoints and other log data:
         self.create_model_dirs()
-        #
+
+        # add placeholders to the comp. graph:
         self.add_placeholders()
-        #
+
+        # define the forward pass, compute logits and add to the comp. graph:
         self.add_logits()
-        #
+
+        # compute the batch loss and add to the comp. graph:
         self.add_loss_op()
-        #
+
+        # add a training operation (for minimizing the loss) to the comp. graph:
         self.add_train_op()
 
     def create_model_dirs(self):
-        """
-        - DOES:
-        """
-
         self.model_dir = self.logs_dir + "model_%s" % self.model_id + "/"
         self.checkpoints_dir = self.model_dir + "checkpoints/"
         self.debug_imgs_dir = self.model_dir + "imgs/"
@@ -59,170 +50,176 @@ class ENet_model(object):
             os.makedirs(self.debug_imgs_dir)
 
     def add_placeholders(self):
-        """
-        - DOES:
-        """
-
         self.imgs_ph = tf.placeholder(tf.float32,
-                    shape=[self.batch_size, self.img_height, self.img_width, 3], # ([batch_size, img_heigth, img_width, 3])
+                    shape=[self.batch_size, self.img_height, self.img_width, 3],
                     name="imgs_ph")
 
         self.onehot_labels_ph = tf.placeholder(tf.float32,
-                    shape=[self.batch_size, self.img_height, self.img_width, self.no_of_classes], # ([batch_size, img_heigth, img_width, no_of_classes])
+                    shape=[self.batch_size, self.img_height, self.img_width, self.no_of_classes],
                     name="onehot_labels_ph")
 
-        self.pretrain_labels_ph = tf.placeholder(tf.int32,
-                    shape=[self.batch_size], name="pretrain_labels_ph")
-
+        # dropout probability in the early layers of the network:
         self.early_drop_prob_ph = tf.placeholder(tf.float32, name="early_drop_prob_ph")
 
+        # dropout probability in the later layers of the network:
         self.late_drop_prob_ph = tf.placeholder(tf.float32, name="late_drop_prob_ph")
 
-    def create_feed_dict(self, imgs_batch, early_drop_prob, late_drop_prob, onehot_labels_batch=None, pretrain_labels_batch=None):
-        """
-        - DOES: returns a feed_dict mapping the placeholders to the actual
-        input data (this is how we run the network on specific data).
-        """
-
+    def create_feed_dict(self, imgs_batch, early_drop_prob, late_drop_prob, onehot_labels_batch=None):
+        # return a feed_dict mapping the placeholders to the actual input data:
         feed_dict = {}
+        feed_dict[self.imgs_ph] = imgs_batch
         feed_dict[self.early_drop_prob_ph] = early_drop_prob
         feed_dict[self.late_drop_prob_ph] = late_drop_prob
-        feed_dict[self.imgs_ph] = imgs_batch
         if onehot_labels_batch is not None:
             # only add the labels data if it's specified (during inference, we
             # won't have any labels):
             feed_dict[self.onehot_labels_ph] = onehot_labels_batch
-        if pretrain_labels_batch is not None:
-            feed_dict[self.pretrain_labels_ph] = pretrain_labels_batch
 
         return feed_dict
 
     def add_logits(self):
-        """
-        - DOES:
-        """
-
         # encoder:
+        # # initial block:
         network = self.initial_block(x=self.imgs_ph, scope="inital")
         print network.get_shape().as_list()
 
+
+        # # layer 1:
+        # # # save the input shape to use in max_unpool in the decoder:
         inputs_shape_1 = network.get_shape().as_list()
-
         network, pooling_indices_1 = self.encoder_bottleneck_regular(x=network,
-                    output_depth=64, drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_0", downsampling=True)
-        print network.get_shape().as_list()
-        network = self.encoder_bottleneck_regular(x=network,
-                    output_depth=64, drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_1")
-        print network.get_shape().as_list()
-        network = self.encoder_bottleneck_regular(x=network,
-                    output_depth=64, drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_2")
-        print network.get_shape().as_list()
-        network = self.encoder_bottleneck_regular(x=network,
-                    output_depth=64, drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_3")
-        print network.get_shape().as_list()
-        network = self.encoder_bottleneck_regular(x=network,
-                    output_depth=64, drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_4")
+                    output_depth=64, drop_prob=self.early_drop_prob_ph,
+                    scope="bottleneck_1_0", downsampling=True)
         print network.get_shape().as_list()
 
+        network = self.encoder_bottleneck_regular(x=network, output_depth=64,
+                    drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_1")
+        print network.get_shape().as_list()
+
+        network = self.encoder_bottleneck_regular(x=network, output_depth=64,
+                    drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_2")
+        print network.get_shape().as_list()
+
+        network = self.encoder_bottleneck_regular(x=network, output_depth=64,
+                    drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_3")
+        print network.get_shape().as_list()
+
+        network = self.encoder_bottleneck_regular(x=network, output_depth=64,
+                    drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_4")
+        print network.get_shape().as_list()
+
+
+        # # layer 2:
+        # # # save the input shape to use in max_unpool in the decoder:
         inputs_shape_2 = network.get_shape().as_list()
-
         network, pooling_indices_2 = self.encoder_bottleneck_regular(x=network,
-                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_0", downsampling=True)
-        print network.get_shape().as_list()
-        network = self.encoder_bottleneck_regular(x=network,
-                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_1")
-        print network.get_shape().as_list()
-        network = self.encoder_bottleneck_dilated(x=network,
-                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_2", dilation_rate=2)
-        print network.get_shape().as_list()
-        network = self.encoder_bottleneck_asymmetric(x=network,
-                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_3")
-        print network.get_shape().as_list()
-        network = self.encoder_bottleneck_dilated(x=network,
-                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_4", dilation_rate=4)
-        print network.get_shape().as_list()
-        network = self.encoder_bottleneck_regular(x=network,
-                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_5")
-        print network.get_shape().as_list()
-        network = self.encoder_bottleneck_dilated(x=network,
-                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_6", dilation_rate=8)
-        print network.get_shape().as_list()
-        network = self.encoder_bottleneck_asymmetric(x=network,
-                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_7")
-        print network.get_shape().as_list()
-        network = self.encoder_bottleneck_dilated(x=network,
-                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_8", dilation_rate=16)
+                    output_depth=128, drop_prob=self.late_drop_prob_ph,
+                    scope="bottleneck_2_0", downsampling=True)
         print network.get_shape().as_list()
 
-        network = self.encoder_bottleneck_regular(x=network,
-                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_1")
+        network = self.encoder_bottleneck_regular(x=network, output_depth=128,
+                        drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_1")
         print network.get_shape().as_list()
-        network = self.encoder_bottleneck_dilated(x=network,
-                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_2", dilation_rate=2)
+
+        network = self.encoder_bottleneck_dilated(x=network, output_depth=128,
+                    drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_2",
+                    dilation_rate=2)
         print network.get_shape().as_list()
-        network = self.encoder_bottleneck_asymmetric(x=network,
-                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_3")
+
+        network = self.encoder_bottleneck_asymmetric(x=network, output_depth=128,
+                    drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_3")
         print network.get_shape().as_list()
-        network = self.encoder_bottleneck_dilated(x=network,
-                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_4", dilation_rate=4)
+
+        network = self.encoder_bottleneck_dilated(x=network, output_depth=128,
+                    drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_4",
+                    dilation_rate=4)
         print network.get_shape().as_list()
-        network = self.encoder_bottleneck_regular(x=network,
-                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_5")
+
+        network = self.encoder_bottleneck_regular(x=network, output_depth=128,
+                    drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_5")
         print network.get_shape().as_list()
-        network = self.encoder_bottleneck_dilated(x=network,
-                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_6", dilation_rate=8)
+
+        network = self.encoder_bottleneck_dilated(x=network, output_depth=128,
+                    drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_6",
+                    dilation_rate=8)
         print network.get_shape().as_list()
-        network = self.encoder_bottleneck_asymmetric(x=network,
-                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_7")
+
+        network = self.encoder_bottleneck_asymmetric(x=network, output_depth=128,
+                    drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_7")
         print network.get_shape().as_list()
-        network = self.encoder_bottleneck_dilated(x=network,
-                    output_depth=128, drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_8", dilation_rate=16)
+
+        network = self.encoder_bottleneck_dilated(x=network, output_depth=128,
+                    drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_8",
+                    dilation_rate=16)
         print network.get_shape().as_list()
-        print "end of encoder"
 
 
+        # layer 3:
+        network = self.encoder_bottleneck_regular(x=network, output_depth=128,
+                    drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_1")
+        print network.get_shape().as_list()
 
+        network = self.encoder_bottleneck_dilated(x=network, output_depth=128,
+                    drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_2",
+                    dilation_rate=2)
+        print network.get_shape().as_list()
 
+        network = self.encoder_bottleneck_asymmetric(x=network, output_depth=128,
+                    drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_3")
+        print network.get_shape().as_list()
 
-        # pretrain classification:
-        pretrain_avg_pool = tf.reduce_mean(network, [1,2])
-        print pretrain_avg_pool.get_shape().as_list()
-        W_pretrain_logits = self.get_variable_weight_decay("W_pretrain_logits",
-                    shape=[128, self.no_of_classes],
-                    initializer=tf.contrib.layers.xavier_initializer(),
-                    loss_category="pretrain_wd_losses")
-        b_pretrain_logits = self.get_variable_weight_decay("b_pretrain_logits",
-                    shape=[self.no_of_classes],
-                    initializer=tf.constant_initializer(0),
-                    loss_category="pretrain_wd_losses")
-        self.pretrain_logits = tf.matmul(pretrain_avg_pool, W_pretrain_logits) + b_pretrain_logits
-        print self.pretrain_logits.get_shape().as_list()
+        network = self.encoder_bottleneck_dilated(x=network, output_depth=128,
+                    drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_4",
+                    dilation_rate=4)
+        print network.get_shape().as_list()
 
+        network = self.encoder_bottleneck_regular(x=network, output_depth=128,
+                    drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_5")
+        print network.get_shape().as_list()
 
+        network = self.encoder_bottleneck_dilated(x=network, output_depth=128,
+                    drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_6",
+                    dilation_rate=8)
+        print network.get_shape().as_list()
 
+        network = self.encoder_bottleneck_asymmetric(x=network, output_depth=128,
+                    drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_7")
+        print network.get_shape().as_list()
+
+        network = self.encoder_bottleneck_dilated(x=network, output_depth=128,
+                    drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_8",
+                    dilation_rate=16)
+        print network.get_shape().as_list()
 
 
 
         # decoder:
-        print "start of decoder"
-        network = self.decoder_bottleneck(x=network,
-                    output_depth=64, scope="bottleneck_4_0",
-                    upsampling=True, pooling_indices=pooling_indices_2, output_shape=inputs_shape_2)
-        print network.get_shape().as_list()
-        network = self.decoder_bottleneck(x=network,
-                    output_depth=64, scope="bottleneck_4_1")
-        print network.get_shape().as_list()
-        network = self.decoder_bottleneck(x=network,
-                    output_depth=64, scope="bottleneck_4_2")
+        # # layer 4:
+        network = self.decoder_bottleneck(x=network, output_depth=64,
+                    scope="bottleneck_4_0", upsampling=True,
+                    pooling_indices=pooling_indices_2, output_shape=inputs_shape_2)
         print network.get_shape().as_list()
 
-        network = self.decoder_bottleneck(x=network,
-                    output_depth=16, scope="bottleneck_5_0",
-                    upsampling=True, pooling_indices=pooling_indices_1, output_shape=inputs_shape_1)
+        network = self.decoder_bottleneck(x=network, output_depth=64,
+                    scope="bottleneck_4_1")
         print network.get_shape().as_list()
-        network = self.decoder_bottleneck(x=network,
-                    output_depth=16, scope="bottleneck_5_1")
+
+        network = self.decoder_bottleneck(x=network, output_depth=64,
+                    scope="bottleneck_4_2")
         print network.get_shape().as_list()
+
+
+        # # layer 5:
+        network = self.decoder_bottleneck(x=network, output_depth=16,
+                    scope="bottleneck_5_0", upsampling=True,
+                    pooling_indices=pooling_indices_1, output_shape=inputs_shape_1)
+        print network.get_shape().as_list()
+
+        network = self.decoder_bottleneck(x=network, output_depth=16,
+                    scope="bottleneck_5_1")
+        print network.get_shape().as_list()
+
+
 
         # fullconv:
         network = tf.contrib.slim.conv2d_transpose(network, self.no_of_classes,
@@ -232,51 +229,28 @@ class ENet_model(object):
         self.logits = network
 
     def add_loss_op(self):
-        """
-        - DOES: computes the weighted CE loss for the batch.
-        """
-
+        # compute the weight tensor:
         weights = self.onehot_labels_ph*self.class_weights
         weights = tf.reduce_sum(weights, 3)
-        # compute the weighted CE loss for each pixel in the batch:
-        loss_per_pixel = tf.losses.softmax_cross_entropy(onehot_labels=self.onehot_labels_ph,
-                    logits=self.logits, weights=weights)
-        # average the loss over all pixels to get the batch loss:
-        self.segmentation_loss = tf.reduce_mean(loss_per_pixel)
-        self.loss = (self.segmentation_loss +
+
+        # compute the weighted cross-entropy segmentation loss for each pixel:
+        seg_loss_per_pixel = tf.losses.softmax_cross_entropy(
+                    onehot_labels=self.onehot_labels_ph, logits=self.logits,
+                    weights=weights)
+
+        # average the loss over all pixels to get the batch segmentation loss:
+        self.seg_loss = tf.reduce_mean(seg_loss_per_pixel)
+
+        # compute the total loss by summing the segmentation loss and all
+        # variable weight decay losses:
+        self.loss = (self.seg_loss +
                     tf.add_n(tf.get_collection("encoder_wd_losses")) +
                     tf.add_n(tf.get_collection("decoder_wd_losses")))
 
-
-
-        # compute the pretrain loss (cross entropy):
-        pretrain_loss_per_img = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                    logits=self.pretrain_logits, labels=self.pretrain_labels_ph)
-        # # average the loss over all imgs to get the batch loss:
-        self.pretrain_class_loss = tf.reduce_mean(pretrain_loss_per_img)
-        # #
-        self.pretrain_loss = (self.pretrain_class_loss +
-                    tf.add_n(tf.get_collection("pretrain_wd_losses")) +
-                    tf.add_n(tf.get_collection("encoder_wd_losses")))
-
     def add_train_op(self):
-        """
-        - DOES: creates a training operator for minimization of the loss.
-        """
-        optimizer = tf.train.AdamOptimizer(5e-4)
+        # create the train op:
+        optimizer = tf.train.AdamOptimizer(self.lr)
         self.train_op = optimizer.minimize(self.loss)
-        # global_step = tf.Variable(0, trainable=False)
-        # lr = tf.train.exponential_decay(learning_rate=self.initial_lr,
-        #             global_step=global_step, decay_steps=self.decay_steps,
-        #             decay_rate=self.lr_decay_rate, staircase=True)
-        # optimizer = tf.train.AdamOptimizer(learning_rate=lr)
-        # self.train_op = optimizer.minimize(self.loss, global_step=global_step) # (global_step will now automatically be incremented)
-
-
-
-        # create the pretrain training operator:
-        pretrain_optimizer = tf.train.AdamOptimizer(1e-3)
-        self.pretrain_train_op = pretrain_optimizer.minimize(self.pretrain_loss)
 
     def initial_block(self, x, scope):
         # convolution branch:
@@ -284,7 +258,7 @@ class ENet_model(object):
                     shape=[3, 3, 3, 13], # ([filter_height, filter_width, in_depth, out_depth])
                     initializer=tf.contrib.layers.xavier_initializer(),
                     loss_category="encoder_wd_losses")
-        b_conv = self.get_variable_weight_decay(scope + "/b", shape=[13], # ([out_depth]], one bias weight per out depth layer),
+        b_conv = self.get_variable_weight_decay(scope + "/b", shape=[13], # ([out_depth])
                     initializer=tf.constant_initializer(0),
                     loss_category="encoder_wd_losses")
         conv_branch = tf.nn.conv2d(x, W_conv, strides=[1, 2, 2, 1],
@@ -303,7 +277,8 @@ class ENet_model(object):
 
         return output
 
-    def encoder_bottleneck_regular(self, x, output_depth, drop_prob, scope, proj_ratio=4, downsampling=False):
+    def encoder_bottleneck_regular(self, x, output_depth, drop_prob, scope,
+                proj_ratio=4, downsampling=False):
         input_shape = x.get_shape().as_list()
         input_depth = input_shape[3]
 
@@ -336,7 +311,7 @@ class ENet_model(object):
                     shape=[3, 3, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
                     initializer=tf.contrib.layers.xavier_initializer(),
                     loss_category="encoder_wd_losses")
-        b_conv = self.get_variable_weight_decay(scope + "/b_conv", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
+        b_conv = self.get_variable_weight_decay(scope + "/b_conv", shape=[internal_depth], # ([out_depth])
                     initializer=tf.constant_initializer(0),
                     loss_category="encoder_wd_losses")
         conv_branch = tf.nn.conv2d(conv_branch, W_conv, strides=[1, 1, 1, 1],
@@ -359,27 +334,30 @@ class ENet_model(object):
         # # regularizer:
         conv_branch = spatial_dropout(conv_branch, drop_prob)
 
+
         # main branch:
         main_branch = x
 
         if downsampling:
-            # # max pooling with argmax (for use in upsampling in the decoder):
+            # max pooling with argmax (for use in max_unpool in the decoder):
             main_branch, pooling_indices = tf.nn.max_pool_with_argmax(main_branch,
                         ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding="SAME")
             # (everytime we downsample, we also increase the feature block depth)
 
-            # # pad with zeros so that the feature block depth matches:
+            # pad with zeros so that the feature block depth matches:
             depth_to_pad = output_depth - input_depth
             paddings = tf.convert_to_tensor([[0, 0], [0, 0], [0, 0], [0, depth_to_pad]])
             # (paddings is an integer tensor of shape [4, 2] where 4 is the rank
             # of main_branch. For each dimension D (D = 0, 1, 2, 3) of main_branch,
-            # paddings[D, 0] is the no of values to add before the contents of main_branch
-            # in that dimension, and paddings[D, 0] is the no of values to add after
-            # the contents of main_branch in that dimension.)
+            # paddings[D, 0] is the no of values to add before the contents of
+            # main_branch in that dimension, and paddings[D, 0] is the no of
+            # values to add after the contents of main_branch in that dimension)
             main_branch = tf.pad(main_branch, paddings=paddings, mode="CONSTANT")
+
 
         # add the branches:
         merged = conv_branch + main_branch
+
         # apply PReLU:
         output = PReLU(merged, scope=scope + "/output")
 
@@ -388,7 +366,8 @@ class ENet_model(object):
         else:
             return output
 
-    def encoder_bottleneck_dilated(self, x, output_depth, drop_prob, scope, dilation_rate, proj_ratio=4):
+    def encoder_bottleneck_dilated(self, x, output_depth, drop_prob, scope,
+                dilation_rate, proj_ratio=4):
         input_shape = x.get_shape().as_list()
         input_depth = input_shape[3]
 
@@ -413,7 +392,7 @@ class ENet_model(object):
                     shape=[3, 3, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
                     initializer=tf.contrib.layers.xavier_initializer(),
                     loss_category="encoder_wd_losses")
-        b_conv = self.get_variable_weight_decay(scope + "/b_conv", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
+        b_conv = self.get_variable_weight_decay(scope + "/b_conv", shape=[internal_depth], # ([out_depth])
                     initializer=tf.constant_initializer(0),
                     loss_category="encoder_wd_losses")
         conv_branch = tf.nn.atrous_conv2d(conv_branch, W_conv, rate=dilation_rate,
@@ -436,11 +415,14 @@ class ENet_model(object):
         # # regularizer:
         conv_branch = spatial_dropout(conv_branch, drop_prob)
 
+
         # main branch:
         main_branch = x
 
+
         # add the branches:
         merged = conv_branch + main_branch
+
         # apply PReLU:
         output = PReLU(merged, scope=scope + "/output")
 
@@ -479,7 +461,7 @@ class ENet_model(object):
                     shape=[1, 5, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
                     initializer=tf.contrib.layers.xavier_initializer(),
                     loss_category="encoder_wd_losses")
-        b_conv2 = self.get_variable_weight_decay(scope + "/b_conv2", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
+        b_conv2 = self.get_variable_weight_decay(scope + "/b_conv2", shape=[internal_depth], # ([out_depth])
                     initializer=tf.constant_initializer(0),
                     loss_category="encoder_wd_losses")
         conv_branch = tf.nn.conv2d(conv_branch, W_conv2, strides=[1, 1, 1, 1],
@@ -502,18 +484,22 @@ class ENet_model(object):
         # # regularizer:
         conv_branch = spatial_dropout(conv_branch, drop_prob)
 
+
         # main branch:
         main_branch = x
 
+
         # add the branches:
         merged = conv_branch + main_branch
+
         # apply PReLU:
         output = PReLU(merged, scope=scope + "/output")
 
         return output
 
-    def decoder_bottleneck(self, x, output_depth, scope, proj_ratio=4, upsampling=False, pooling_indices=None, output_shape=None):
-        # (decoder uses ReLU instead of PReLU)
+    def decoder_bottleneck(self, x, output_depth, scope, proj_ratio=4,
+                upsampling=False, pooling_indices=None, output_shape=None):
+        # NOTE! decoder uses ReLU instead of PReLU
 
         input_shape = x.get_shape().as_list()
         input_depth = input_shape[3]
@@ -539,6 +525,7 @@ class ENet_model(object):
             main_branch = max_unpool(main_branch, pooling_indices, output_shape)
 
         main_branch = tf.cast(main_branch, tf.float32)
+
 
         # convolution branch:
         conv_branch = x
@@ -574,7 +561,7 @@ class ENet_model(object):
                         shape=[3, 3, internal_depth, internal_depth], # ([filter_height, filter_width, in_depth, out_depth])
                         initializer=tf.contrib.layers.xavier_initializer(),
                         loss_category="decoder_wd_losses")
-            b_conv = self.get_variable_weight_decay(scope + "/b_conv", shape=[internal_depth], # ([out_depth]], one bias weight per out depth layer),
+            b_conv = self.get_variable_weight_decay(scope + "/b_conv", shape=[internal_depth], # ([out_depth])
                         initializer=tf.constant_initializer(0),
                         loss_category="decoder_wd_losses")
             conv_branch = tf.nn.conv2d(conv_branch, W_conv, strides=[1, 1, 1, 1],
@@ -596,16 +583,21 @@ class ENet_model(object):
 
         # NOTE! no regularizer
 
+
         # add the branches:
         merged = conv_branch + main_branch
+
         # apply ReLU:
         output = tf.nn.relu(merged)
 
         return output
 
-    def get_variable_weight_decay(self, name, shape, initializer, loss_category, dtype=tf.float32):
+    def get_variable_weight_decay(self, name, shape, initializer, loss_category,
+                dtype=tf.float32):
         variable = tf.get_variable(name, shape=shape, dtype=dtype,
                     initializer=initializer)
+
+        # add a variable weight decay loss:
         weight_decay = self.wd*tf.nn.l2_loss(variable)
         tf.add_to_collection(loss_category, weight_decay)
 
