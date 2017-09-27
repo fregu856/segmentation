@@ -19,13 +19,13 @@ def _MaxPoolGradWithArgmax(op, grad, unused_argmax_grad):
 ## Documentation:
 
 preprocess_data.py:  
-- ASSUMES: that all KITTI training images have been placed in data_dir/KITTI/data_object/training/image_2, that all corresponding labels have been placed in data_dir/KITTI/data_object/training/label_2 and that data_dir/KITTI/data_tracking/testing/image_02 contains the 0000, 0001, 0004 and 0012 sequence directories.
+- ASSUMES: that all Cityscapes training (validation) image directories have been placed in data_dir/cityscapes/leftImg8bit/train (data_dir/cityscapes/leftImg8bit/val) and that all corresponding ground truth directories have been placed in data_dir/cityscapes/gtFine/train (data_dir/cityscapes/gtFine/val).
 - DOES: script for performing all necessary preprocessing of images and labels.
 *****
 
 model.py:  
-- ASSUMES: that preprocessing_data.py has already been run (or at least that caffemodel_weights.pkl has been placed in 2D_detection/data).
-- DOES: contains the SqueezeDet_model class.
+- ASSUMES: that preprocess_data.py has already been run.
+- DOES: contains the ENet_model class.
 *****
 
 utilities.py:  
@@ -34,35 +34,34 @@ utilities.py:
 *****
 
 train.py:  
-- ASSUMES: that preprocessing_data.py has already been run.
+- ASSUMES: that preprocess_data.py has already been run.
 - DOES: script for training the model.
 *****
 
-run_on_KITTI_sequence.py:  
-- ASSUMES: that preprocessing_data.py has already been run.
-- DOES: runs a model checkpoint (set in line 45) on all frames in a KITTI test sequence (set in line 28) and creates a video of the result.
+run_on_sequence.py:  
+- ASSUMES: that preprocess_data.py has already been run.
+- DOES: runs a model checkpoint (set in line 56) on all frames in a Cityscapes demo sequence directory (set in line 30) and creates a video of the result.
 
 ****
 ## Training details:
 
-- The SqueezeNet network was initialized with the pretrained model in https://github.com/DeepScale/SqueezeNet/tree/master/SqueezeNet_v1.0 (squeezenet_v1.0.caffemodel and deploy.prototxt). To load these weights into TensorFlow, one needs to have pycaffe installed (must be able to run "import caffe"). Run get_caffemodel_weights in utilities.py and save the output as caffemodel_weights.pkl in 2D_detection/data using cPickle. These files (caffemodel_weights.pkl, squeezenet_v1.0.caffemodel and deploy.prototxt) are also included in 2D_detection/data in the repo.
-
-- Batch size: 32.
+- In the paper the authors suggest that you first pretrain the encoder to categorize downsampled regions of the input images, I did however train the entire network from scratch.
+- Batch size: 4.
 - For all other hyperparameters I used the same values as in the paper.
 
 - Training loss:
-- ![training loss](https://raw.githubusercontent.com/fregu856/2D_detection/master/training_logs/model_1/train_loss_per_epoch.png)
+- ![training loss](https://raw.githubusercontent.com/fregu856/segmentation/master/training_logs/model_1/train_loss_per_epoch.png)
 
 - Validation loss:
-- ![validation loss](https://raw.githubusercontent.com/fregu856/2D_detection/master/training_logs/model_1/val_loss_per_epoch.png)
+- ![validation loss](https://raw.githubusercontent.com/fregu856/segmentation/master/training_logs/model_1/val_loss_per_epoch.png)
 
-- The results in the video above was obtained with the model at epoch 58, for which a checkpoint is included in 2D_detection/training_logs/best_model in the repo.
+- The results in the video above was obtained with the model at epoch 23, for which a checkpoint is included in segmentation/training_logs/best_model in the repo.
 
 ******
 ## Training on Microsoft Azure:
 
 To train the model, I used an NC6 virtual machine on Microsoft Azure. Below I have listed what I needed to do in order to get started, and some things I found useful. For reference, my username was 'fregu856':
-- Download KITTI (data_object_image_2.zip and data_object_label_2.zip).
+- Download Cityscapes.
 
 - Install docker-ce:
 - - $ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
