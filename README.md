@@ -1,6 +1,6 @@
 # segmentation
 
-Tensorflow implementation of ENet (https://arxiv.org/pdf/1606.02147.pdf) based on the official Torch implementation (https://github.com/e-lab/ENet-training) and the Keras implementation by PavlosMelissinos (https://github.com/PavlosMelissinos/enet-keras), trained on the Cityscapes dataset (https://www.cityscapes-dataset.com/).
+TensorFlow implementation of ENet (https://arxiv.org/pdf/1606.02147.pdf) based on the official Torch implementation (https://github.com/e-lab/ENet-training) and the Keras implementation by PavlosMelissinos (https://github.com/PavlosMelissinos/enet-keras), trained on the Cityscapes dataset (https://www.cityscapes-dataset.com/).
 
 - Youtube video of results (https://youtu.be/HbPhvct5kvs):
 - [![demo video with results](https://img.youtube.com/vi/HbPhvct5kvs/0.jpg)](https://youtu.be/HbPhvct5kvs)
