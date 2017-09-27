@@ -11,19 +11,23 @@ from utilities import label_img_to_color
 
 from model import ENet_model
 
-#project_dir = "/home/fregu856/segmentation/"
 project_dir = "/root/segmentation/"
 
 data_dir = project_dir + "data/"
 
-model_id = "1" # (change this to not overwrite all log data when you train the model)
+# change this to not overwrite all log data when you train the model:
+model_id = "1"
+
 batch_size = 4
 img_height = 512
 img_width = 1024
 
-model = ENet_model(model_id, img_height=img_height, img_width=img_width, batch_size=batch_size)
+model = ENet_model(model_id, img_height=img_height, img_width=img_width,
+            batch_size=batch_size)
+
 no_of_classes = model.no_of_classes
 
+# load the mean color channels of the train imgs:
 train_mean_channels = cPickle.load(open("data/mean_channels.pkl"))
 
 # load the training data from disk:
@@ -44,22 +48,21 @@ val_data = zip(val_img_paths, val_trainId_label_paths)
 no_of_val_imgs = len(val_img_paths)
 no_of_val_batches = int(no_of_val_imgs/batch_size)
 
-def evaluate_on_val():
-    """
-    - DOES:
-    """
+# define params needed for label to onehot label conversion:
+layer_idx = np.arange(img_height).reshape(img_height, 1)
+component_idx = np.tile(np.arange(img_width), (img_height, 1))
 
+def evaluate_on_val():
     random.shuffle(val_data)
     val_img_paths, val_trainId_label_paths = zip(*val_data)
-
-    layer_idx = np.arange(img_height).reshape(img_height, 1)
-    component_idx = np.tile(np.arange(img_width), (img_height, 1))
 
     val_batch_losses = []
     batch_pointer = 0
     for step in range(no_of_val_batches):
         batch_imgs = np.zeros((batch_size, img_height, img_width, 3), dtype=np.float32)
-        batch_onehot_labels = np.zeros((batch_size, img_height, img_width, no_of_classes), dtype=np.float32)
+        batch_onehot_labels = np.zeros((batch_size, img_height, img_width,
+                    no_of_classes), dtype=np.float32)
+
         for i in range(batch_size):
             # read the next img:
             img = cv2.imread(val_img_paths[batch_pointer + i], -1)
@@ -73,46 +76,45 @@ def evaluate_on_val():
             onehot_label = np.zeros((img_height, img_width, no_of_classes), dtype=np.float32)
             onehot_label[layer_idx, component_idx, trainId_label] = 1
             batch_onehot_labels[i] = onehot_label
+
         batch_pointer += batch_size
 
-        batch_feed_dict = model.create_feed_dict(imgs_batch=batch_imgs, early_drop_prob=0.0,
-                    late_drop_prob=0.0, onehot_labels_batch=batch_onehot_labels)
+        batch_feed_dict = model.create_feed_dict(imgs_batch=batch_imgs,
+                    early_drop_prob=0.0, late_drop_prob=0.0,
+                    onehot_labels_batch=batch_onehot_labels)
 
+        # run a forward pass, get the batch loss and the logits:
         batch_loss, logits = sess.run([model.loss, model.logits],
                     feed_dict=batch_feed_dict)
+
         val_batch_losses.append(batch_loss)
         print ("epoch: %d/%d, val step: %d/%d, val batch loss: %g" % (epoch+1,
                     no_of_epochs, step+1, no_of_val_batches, batch_loss))
 
         if step < 4:
+            # save the predicted label images to disk for debugging and
+            # qualitative evaluation:
             predictions = np.argmax(logits, axis=3)
             for i in range(batch_size):
                 pred_img = predictions[i]
+                label_img_color = label_img_to_color(pred_img)
                 cv2.imwrite((model.debug_imgs_dir + "val_" + str(epoch) + "_" +
-                            str(step) + "_" + str(i) + ".png"), pred_img)
-                # label_img_color = label_img_to_color(pred_img)
-                # cv2.imwrite((model.debug_imgs_dir + "val_" + str(epoch) + "_" +
-                #             str(step) + "_" + str(i) + ".png"), label_img_color)
+                            str(step) + "_" + str(i) + ".png"), label_img_color)
 
     val_loss = np.mean(val_batch_losses)
     return val_loss
 
 def train_data_iterator():
-    """
-    - DOES:
-    """
-
     random.shuffle(train_data)
     train_img_paths, train_trainId_label_paths = zip(*train_data)
 
-    layer_idx = np.arange(img_height).reshape(img_height, 1)
-    component_idx = np.tile(np.arange(img_width), (img_height, 1))
-
     batch_pointer = 0
     for step in range(no_of_batches):
-        # get and yield the next batch_size imgs and onehot labels from the training data:
+        # get and yield the next batch_size imgs and onehot labels from the train data:
         batch_imgs = np.zeros((batch_size, img_height, img_width, 3), dtype=np.float32)
-        batch_onehot_labels = np.zeros((batch_size, img_height, img_width, no_of_classes), dtype=np.float32)
+        batch_onehot_labels = np.zeros((batch_size, img_height, img_width,
+                    no_of_classes), dtype=np.float32)
+
         for i in range(batch_size):
             # read the next img:
             img = cv2.imread(train_img_paths[batch_pointer + i], -1)
@@ -126,6 +128,7 @@ def train_data_iterator():
             onehot_label = np.zeros((img_height, img_width, no_of_classes), dtype=np.float32)
             onehot_label[layer_idx, component_idx, trainId_label] = 1
             batch_onehot_labels[i] = onehot_label
+
         batch_pointer += batch_size
 
         yield (batch_imgs, batch_onehot_labels)
@@ -139,19 +142,14 @@ saver = tf.train.Saver(tf.trainable_variables(), write_version=tf.train.SaverDef
 train_loss_per_epoch = []
 val_loss_per_epoch = []
 
-# initialize a list containing the 5 best val losses (is used to tell when it
-# makes sense to save a model checkpoint):
+# initialize a list containing the 5 best val losses (is used to tell when to
+# save a model checkpoint):
 best_epoch_losses = [1000, 1000, 1000, 1000, 1000]
 
 with tf.Session() as sess:
     # initialize all variables/parameters:
     init = tf.global_variables_initializer()
     sess.run(init)
-
-    # restore the pretrained encoder:
-    #saver.restore(sess, project_dir + "training_logs/best_pretrain_model/model_pretrain_1_epoch_9.ckpt")
-
-    #saver.restore(sess, project_dir + "training_logs/model_road_nonroad_4/checkpoints/model_road_nonroad_4_epoch_6.ckpt")
 
     for epoch in range(no_of_epochs):
         print "###########################"
@@ -163,21 +161,16 @@ with tf.Session() as sess:
         batch_losses = []
         for step, (imgs, onehot_labels) in enumerate(train_data_iterator()):
             # create a feed dict containing the batch data:
-            batch_feed_dict = model.create_feed_dict(imgs_batch=imgs, early_drop_prob=0.01,
-                        late_drop_prob=0.1, onehot_labels_batch=onehot_labels)
+            batch_feed_dict = model.create_feed_dict(imgs_batch=imgs,
+                        early_drop_prob=0.01, late_drop_prob=0.1,
+                        onehot_labels_batch=onehot_labels)
 
             # compute the batch loss and compute & apply all gradients w.r.t to
             # the batch loss (without model.train_op in the call, the network
             # would NOT train, we would only compute the batch loss):
-            batch_loss, _, logits = sess.run([model.loss, model.train_op, model.logits],
+            batch_loss, _ = sess.run([model.loss, model.train_op],
                         feed_dict=batch_feed_dict)
             batch_losses.append(batch_loss)
-
-            predictions = np.argmax(logits, axis=3)
-            pred_img = predictions[0]
-            cv2.imwrite("test.png", pred_img)
-            # label_img_color = label_img_to_color(pred_img)
-            # cv2.imwrite("test.png", label_img_color)
 
             print "step: %d/%d, training batch loss: %g" % (step+1, no_of_batches, batch_loss)
 

@@ -14,17 +14,16 @@ def PReLU(x, scope):
 
 # function for 2D spatial dropout:
 def spatial_dropout(x, drop_prob):
-    # x is a tensor of shape [batch_size, fb_height, fb_width, fb_depth]
-    # where fb stands for "feature block"
+    # x is a tensor of shape [batch_size, height, width, channels]
 
     keep_prob = 1.0 - drop_prob
     input_shape = x.get_shape().as_list()
 
     batch_size = input_shape[0]
-    fb_depth = input_shape[3]
+    channels = input_shape[3]
 
-    # drop each feature block layer with probability drop_prob:
-    noise_shape = tf.constant(value=[batch_size, 1, 1, fb_depth])
+    # drop each channel with probability drop_prob:
+    noise_shape = tf.constant(value=[batch_size, 1, 1, channels])
     x_drop = tf.nn.dropout(x, keep_prob, noise_shape=noise_shape)
 
     output = x_drop
