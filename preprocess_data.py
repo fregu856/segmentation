@@ -1,3 +1,4 @@
+from __future__ import print_function
 import cv2
 import cPickle
 import os
@@ -155,12 +156,12 @@ for dir_step, dir in enumerate(train_dirs):
 
 
 # compute the mean color channels of the train imgs:
-print "computing mean color channels of the train imgs"
+print("computing mean color channels of the train imgs")
 no_of_train_imgs = len(train_img_paths)
 mean_channels = np.zeros((3, ))
 for step, img_path in enumerate(train_img_paths):
     if step % 100 == 0:
-        print step
+        print(step)
 
     img = cv2.imread(img_path, -1)
 
@@ -176,7 +177,7 @@ cPickle.dump(mean_channels, open(project_dir + "data/mean_channels.pkl", "w"))
 
 
 # compute the class weights:
-print "computing class weights"
+print("computing class weights")
 trainId_to_count = {}
 for trainId in range(no_of_classes):
     trainId_to_count[trainId] = 0
@@ -185,7 +186,7 @@ for trainId in range(no_of_classes):
 # # object class:
 for step, trainId_label_path in enumerate(train_trainId_label_paths):
     if step % 100 == 0:
-        print step
+        print(step)
 
     # read the label image:
     trainId_label = cv2.imread(trainId_label_path, -1)
@@ -219,8 +220,8 @@ for dir_step, dir in enumerate(val_dirs):
     file_names = os.listdir(img_dir)
     for step, file_name in enumerate(file_names):
         if step % 10 == 0:
-            print "val dir %d/%d, step %d/%d" % (dir_step, len(val_dirs)-1,
-                        step, len(file_names)-1)
+            print("val dir %d/%d, step %d/%d" % (dir_step, len(val_dirs)-1,
+                        step, len(file_names)-1))
 
         img_id = file_name.split("_left")[0]
 
@@ -265,13 +266,13 @@ cPickle.dump(val_img_paths,
 
 # augment the train data by flipping all train imgs:
 no_of_train_imgs = len(train_img_paths)
-print "number of train imgs before augmentation: %d " % no_of_train_imgs
+print("number of train imgs before augmentation: %d " % no_of_train_imgs)
 
 augmented_train_img_paths = []
 augmented_train_trainId_label_paths = []
 for step, (img_path, label_path) in enumerate(zip(train_img_paths, train_trainId_label_paths)):
     if step % 100 == 0:
-        print step
+        print(step)
 
     augmented_train_img_paths.append(img_path)
     augmented_train_trainId_label_paths.append(label_path)
@@ -312,4 +313,4 @@ cPickle.dump(train_trainId_label_paths,
 # train_trainId_label_paths = cPickle.load(open(project_dir + "data/train_trainId_label_paths.pkl"))
 
 no_of_train_imgs = len(train_img_paths)
-print "number of train imgs after augmentation: %d " % no_of_train_imgs
+print("number of train imgs after augmentation: %d " % no_of_train_imgs)

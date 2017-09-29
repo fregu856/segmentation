@@ -1,3 +1,4 @@
+from __future__ import print_function
 import tensorflow as tf
 import os
 import cPickle
@@ -81,7 +82,7 @@ class ENet_model(object):
         # encoder:
         # # initial block:
         network = self.initial_block(x=self.imgs_ph, scope="inital")
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
 
         # # layer 1:
@@ -90,23 +91,23 @@ class ENet_model(object):
         network, pooling_indices_1 = self.encoder_bottleneck_regular(x=network,
                     output_depth=64, drop_prob=self.early_drop_prob_ph,
                     scope="bottleneck_1_0", downsampling=True)
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_regular(x=network, output_depth=64,
                     drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_1")
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_regular(x=network, output_depth=64,
                     drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_2")
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_regular(x=network, output_depth=64,
                     drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_3")
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_regular(x=network, output_depth=64,
                     drop_prob=self.early_drop_prob_ph, scope="bottleneck_1_4")
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
 
         # # layer 2:
@@ -115,81 +116,81 @@ class ENet_model(object):
         network, pooling_indices_2 = self.encoder_bottleneck_regular(x=network,
                     output_depth=128, drop_prob=self.late_drop_prob_ph,
                     scope="bottleneck_2_0", downsampling=True)
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_regular(x=network, output_depth=128,
                         drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_1")
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_dilated(x=network, output_depth=128,
                     drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_2",
                     dilation_rate=2)
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_asymmetric(x=network, output_depth=128,
                     drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_3")
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_dilated(x=network, output_depth=128,
                     drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_4",
                     dilation_rate=4)
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_regular(x=network, output_depth=128,
                     drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_5")
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_dilated(x=network, output_depth=128,
                     drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_6",
                     dilation_rate=8)
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_asymmetric(x=network, output_depth=128,
                     drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_7")
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_dilated(x=network, output_depth=128,
                     drop_prob=self.late_drop_prob_ph, scope="bottleneck_2_8",
                     dilation_rate=16)
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
 
         # layer 3:
         network = self.encoder_bottleneck_regular(x=network, output_depth=128,
                     drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_1")
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_dilated(x=network, output_depth=128,
                     drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_2",
                     dilation_rate=2)
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_asymmetric(x=network, output_depth=128,
                     drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_3")
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_dilated(x=network, output_depth=128,
                     drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_4",
                     dilation_rate=4)
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_regular(x=network, output_depth=128,
                     drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_5")
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_dilated(x=network, output_depth=128,
                     drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_6",
                     dilation_rate=8)
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_asymmetric(x=network, output_depth=128,
                     drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_7")
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.encoder_bottleneck_dilated(x=network, output_depth=128,
                     drop_prob=self.late_drop_prob_ph, scope="bottleneck_3_8",
                     dilation_rate=16)
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
 
 
@@ -198,33 +199,33 @@ class ENet_model(object):
         network = self.decoder_bottleneck(x=network, output_depth=64,
                     scope="bottleneck_4_0", upsampling=True,
                     pooling_indices=pooling_indices_2, output_shape=inputs_shape_2)
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.decoder_bottleneck(x=network, output_depth=64,
                     scope="bottleneck_4_1")
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.decoder_bottleneck(x=network, output_depth=64,
                     scope="bottleneck_4_2")
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
 
         # # layer 5:
         network = self.decoder_bottleneck(x=network, output_depth=16,
                     scope="bottleneck_5_0", upsampling=True,
                     pooling_indices=pooling_indices_1, output_shape=inputs_shape_1)
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         network = self.decoder_bottleneck(x=network, output_depth=16,
                     scope="bottleneck_5_1")
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
 
 
         # fullconv:
         network = tf.contrib.slim.conv2d_transpose(network, self.no_of_classes,
                     [2, 2], stride=2, scope="fullconv", padding="SAME")
-        print network.get_shape().as_list()
+        print(network.get_shape().as_list())
 
         self.logits = network
 

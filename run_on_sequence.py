@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as np
 import cPickle
 import tensorflow as tf
@@ -32,7 +33,7 @@ seq_frame_paths = []
 frame_names = sorted(os.listdir(seq_frames_dir))
 for step, frame_name in enumerate(frame_names):
     if step % 100 == 0:
-        print step
+        print(step)
 
     frame_path = seq_frames_dir + frame_name
     seq_frame_paths.append(frame_path)
@@ -78,7 +79,7 @@ with tf.Session() as sess:
         # run a forward pass and get the logits:
         logits = sess.run(model.logits, feed_dict=batch_feed_dict)
 
-        print "step: %d/%d" % (step+1, no_of_batches)
+        print("step: %d/%d" % (step+1, no_of_batches))
 
         # save all predicted label images overlayed on the input frames to results_dir:
         predictions = np.argmax(logits, axis=3)
@@ -104,7 +105,7 @@ out = cv2.VideoWriter(results_dir + "cityscapes_stuttgart_02_pred.avi", fourcc,
 frame_names = sorted(os.listdir(results_dir))
 for step, frame_name in enumerate(frame_names):
     if step % 100 == 0:
-        print step
+        print(step)
 
     if ".png" in frame_name:
         frame_path = results_dir + frame_name
